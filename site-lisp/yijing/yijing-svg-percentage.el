@@ -1,0 +1,23 @@
+
+(defun gua-percent (num)
+  (format "%d%%" num))
+
+(defun gua-make-rect (p dim)
+  `(rect ((width . ,(gua-percent (dim-w dim)))
+          (height . ,(gua-percent (dim-h dim)))
+          (x . ,(gua-percent (point-x p)))
+          (y . ,(gua-percent (point-y p))))))
+
+(defun svg-yin (p dim)
+  (let* ((w-ratio gua-svg-yin-fill-factor)
+         (dim (cons 100.0 (* 100.0 gua-svg-yao-fill-factor)))
+	 (w (* (dim-w dim) (/ w-ratio 2)))
+	 (rw (* (dim-w dim) (- 1 (/ w-ratio 2)))))
+    (let ((p1 p)
+	  (p2 (cons (+ (point-x p) rw)
+		    (point-y p)))
+	  (dim (cons w (dim-h dim))))
+      ;; (mapcar (lambda (rect)))
+      `(svg ((fill . ,(gua-get-color :yin)))
+            ,(gua-make-rect p1 dim)
+            ,(gua-make-rect p2 dim)))))

@@ -1,0 +1,6 @@
+#name : figure
+# --
+#+CAPTION: ${1:caption}
+#+LABEL: fig:${2:label}
+#+attr_latex: width=$3\textwidth
+`(org-insert-link '(4))`$0

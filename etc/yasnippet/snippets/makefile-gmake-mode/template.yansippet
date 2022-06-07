@@ -1,0 +1,16 @@
+# -*- mode: snippet -*-
+# name: c-template
+# key: c-template
+# --
+
+CC = gcc
+
+TARGET = $1
+SRCS = \$(wildcard *.c)
+
+CFLAGS =
+LDFLAGS = -l$2
+
+all:
+    $(CC) $(SRCS) $(CFLAGS) $(LDFLAGS) -o $(TARGET)
+

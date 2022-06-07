@@ -1,0 +1,9 @@
+* A fast and robust Emacs setup
+my personal setup that's rebased off [[https://github.com/redguardtoo/emacs.d][redguardtoo/emacs.d]] 
+
+* Config resources
+More resource link to look at for "references".
+https://tecosaur.github.io/emacs-config/config.html
+https://github.com/andreyorst/dotfiles/tree/master/.config/emacs
+
+https://github.com/hick/emacs-chinese

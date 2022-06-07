@@ -1,0 +1,3 @@
+[submodule "site-lisp/winum"]
+	path = site-lisp/winum
+	url = https://github.com/Inc0n/emacs-winum.git

@@ -1,0 +1,123 @@
+
+* Setup
+#+begin_src emacs-lisp
+(defun save-image-object (img-obj filename)
+  (with-temp-file filename
+    (insert (plist-get (cdr img-obj) :data)))
+  filename)
+#+end_src
+* Basics
+** 变卦
+** 互卦
+
+#+begin_src emacs-lisp 
+(gua-overlap "恒")
+#+end_src
+
+#+RESULTS:
+: 夬
+* 占卜
+** 梅花易起卦方法
+如果第一个数与第二个数正好是8的倍数，除以8后为0的情况，余数应当算为8，第三个数若为6的倍数时，其余数算作6。当只有一个数并且这个数很小，譬如为1时，一般的书上说加上时辰数来算，小雅认为这样的情况当作无效的数，必须重新起卦。 
+
+随意报数的方法过于简单，容易受干扰从而使潜意识发挥不出，因此一般很少使用，取而代之使用测字法，即让求卦人随意写字，然后将前一半字的笔画数作上卦，后一半字的笔画数作下卦，笔画数总和作变爻。当字数为奇数个时，后一半多一个字。例如求卦人写“劝学网”三字，则“劝”为4画，“学网”为14画，所以得出（4，14，18），分别取8和6的余数后得到（4，6，6），最后得出“解”之“未济”。
+
+如果只写一个字的情况下，有两种办法，一是按前面所说单个数的方法来平分，还有一个办法是按字的结构来分，如果这个字是左右结构或上下结构，则按左右或上下部分的笔画数来决定上下卦数。当你不在计算笔画时，如果看错了笔画，请不要更正，梅花易数有一句名言“错卦错算”，这样结果反而正确。也就是说，以你的第一感觉为准，错就错了，不必改正，因为这是心灵感应的事情，不能改变神灵的启示。 
+
+还有许多其它的起卦方法，但大致原理和刚才都是一样的。例如用问卦时间来起卦，将年月日的数字之和作为上卦，年月日时的数字之和作为下卦，时作为变爻。如果对方是用天干地支来表示时间的，则只要将地支换算成相应的数字即可，因天干地支的内容安排在后面章节，
+** 揲蓍
+#+begin_src emacs-lisp
+(defun unique-of-1000 (fn)
+  (let ((acc '()))
+    (dotimes (i 1000)
+      (setq acc
+            (cl-adjoin (funcall fn) acc)))
+    (sort acc '<)))
+
+(defun )
+(unique-of-1000 (lambda () (yijing-sheshi-dinvate 49)))
+#+end_src
+
+#+RESULTS:
+| 40 | 44 |
+
+#+begin_src emacs-lisp
+(let ((forty
+       (unique-of-1000
+        (lambda () (yijing-sheshi-dinvate (yijing-sheshi-dinvate 40)))))
+      (forty-four
+       (unique-of-1000
+        (lambda () (yijing-sheshi-dinvate (yijing-sheshi-dinvate 44))))))
+  (format "Uniques
+40, %s
+44, %s
+Combined, %s"
+          forty
+          forty-four
+          (cl-remove-duplicates (append forty forty-four))))
+#+end_src
+
+#+RESULTS:
+: Uniques
+: 40, (24 28 32)
+: 44, (28 32 36)
+: Combined, (24 28 32 36)
+
+#+begin_src emacs-lisp 
+(unique-of-1000 (lambda () (yijing-sheshi-dinvate 40)))
+#+end_src
+
+#+RESULTS:
+| 32 | 36 |
+
+#+begin_src emacs-lisp 
+(unique-of-1000 (lambda () (yijing-sheshi-dinvate 36)))
+#+end_src
+
+#+RESULTS:
+| 28 | 32 |
+
+* M0nsey
+16, 2021, 2
+
+#+begin_src emacs-lisp :results code
+`',(yijing-plum-blossom 16 2021 2)
+#+end_src
+
+#+Name: result
+#+RESULTS:
+#+begin_src emacs-lisp
+'("泰" "归妹" "明夷")
+#+end_src
+
+#+begin_src emacs-lisp :var result=result
+(list result
+      (mapcar 'gua-get-unicode result))
+#+end_src
+
+#+RESULTS:
+| 泰 | 归妹 | 明夷 |
+| ䷊  | ䷵    | ䷣    |
+
+The 本卦 互卦 变卦
+
+#+begin_src emacs-lisp :var result=result :results file
+(--> (gua-svg result)
+     (save-image-object it "./imgs/m0nesy-result.svg"))
+#+end_src
+
+#+RESULTS:
+[[file:./imgs/m0nesy-result.svg]]
+
+* verify
+43, 82, 56
+
+#+begin_src emacs-lisp :results table
+(let ((result (yijing-plum-blossom 43 82 56)))
+  (list result
+        (mapcar 'gua-get-unicode result)))
+#+end_src
+
+#+RESULTS:
+| 睽 | 既济 | 噬嗑 |
+| ䷥  | ䷾    | ䷔    |

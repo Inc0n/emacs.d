@@ -1,0 +1,25 @@
+# -*- mode: snippet -*-
+# name: main
+# key: main
+# --
+(def (main . args)
+  (def $1-cmd
+    (command '$1 help: "$2"
+             (argument 'in-path help: "path to org file")
+             (option 'output "-o" "--output" help: "output to path")))
+  (def help-cmd
+    (command 'help help: "display this help message"
+             (optional-argument 'command value: string->symbol)))
+  (def gopt (getopt $1-cmd
+                    help-cmd))
+  (try
+   (let ((values cmd opt) (getopt-parse gopt args))
+     (case cmd
+       (($1)
+        ${0:body})))
+   (catch (getopt-error? exn)
+     (getopt-display-help exn "${4:`(file-name-nondirectory (file-name-sans-extension (buffer-file-name)))`}" (current-error-port))
+     (exit 1))
+   (catch (e)
+     (display-exception e (current-error-port))
+     (exit 2))))
