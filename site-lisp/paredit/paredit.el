@@ -707,10 +707,10 @@ If not in a string, act as `paredit-doublequote'; if not prefix argument
 
 ;;;; Escape Insertion
 
-(defun paredit-backslash ()
+(defun paredit-backslash (arg)
   "Insert a backslash followed by a character to escape."
-  (interactive)
-  (cond ((paredit-in-string-p) (paredit-backslash-interactive))
+  (interactive "P")
+  (cond (arg (insert ?\\))((paredit-in-string-p) (paredit-backslash-interactive))
         ((paredit-in-comment-p) (insert ?\\))
         ((paredit-in-char-p) (forward-char) (paredit-backslash-interactive))
         (t (paredit-backslash-interactive))))

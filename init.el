@@ -17,9 +17,9 @@
 (setq garbage-collection-messages t) ; for debug
 (setq gc-cons-percentage 0.5)
 ;; setting the initial gc-cons-threshold to a large value to prevent lots of GC
-(setq gc-cons-threshold (* 64 1024 1024)) ;; 128mb
+(setq gc-cons-threshold (* 64 1024 1024)) ;; 64mb
 
-(defvar my/normal-gc-cons-threshold (* 48 1024 1024)) ;; 48mb
+(defvar my/normal-gc-cons-threshold (* 48 1024 1024)) ;; 32mb
 
 (add-hook 'emacs-startup-hook
           (lambda ()
@@ -28,13 +28,16 @@
             ;; reset the gc-cons-threshold back to a smaller value
             (setq gc-cons-threshold my/normal-gc-cons-threshold)
             (setq gc-cons-percentage 0.1)
+	    (when (file-exists-p custom-file)
+	      (load custom-file))
             (message "startup time: %s, gcs-done=%d"
                      (emacs-init-time) gcs-done)))
 
 ;;----------------------------------------------------------------------------
 ;; Load other lisp configs
 ;;----------------------------------------------------------------------------
-(defsubst my/emacs-d (path)		; Get the expanded PATH under .emacs.d.
+(defsubst my/emacs-d (path)
+  "Get the expanded PATH under .emacs.d."
   (expand-file-name path user-emacs-directory))
 
 (defvar my/site-lisp-dir (my/emacs-d "site-lisp") "My site directory.")
@@ -55,7 +58,6 @@
 (add-to-list 'load-path (my/emacs-d "lisp"))
 
 (let ((file-name-handler-alist nil))
-  ;; (require 'init-autoload)
   ;; `package-initialize' takes 35% of startup time
   ;; need check https://github.com/hlissner/doom-emacs/wiki/FAQ#how-is-dooms-startup-so-fast for solution
   (require 'init-elpa)
@@ -103,10 +105,7 @@
   ;; down all `require' statement. So we do this at the end of startup
   ;; NO ELPA package is dependent on "site-lisp/".
   (let ((default-directory "~/.emacs.d/site-lisp/"))
-    (normal-top-level-add-subdirs-to-load-path))
-
-  (when (file-exists-p custom-file)
-    (load custom-file)))
+    (normal-top-level-add-subdirs-to-load-path)))
 
 (add-to-list 'load-path my/site-lisp-dir)
 

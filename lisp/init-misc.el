@@ -103,7 +103,7 @@
 (setq minibuffer-prompt-properties
       '(read-only t point-entered minibuffer-avoid-prompt face minibuffer-prompt))
 
-(local-require 'avy)
+(require-package 'avy)
 (setq avy-style 'at-full)
 
 ;; midnight
@@ -215,7 +215,8 @@ TODO: Any prefix ARG will turn the search to occur."
     ;; [backspace] 'undefined
     "\C-r" 'isearch-query-replace
     [?\C-\s-r] 'isearch-query-replace-regexp
-    [?\M-q] 'visual-replace-regexp-isearch-or-at-point
+    [?\M-q] (lambda () (interactive)
+	      (visual-replace-regexp-text-at-point isearch-string))
     [escape] 'isearch-abort)
   :init
   (setq isearch-lazy-count t		; enable match numbers count

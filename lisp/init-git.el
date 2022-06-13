@@ -345,42 +345,5 @@ If nothing is selected, use the word under cursor as function name to look up."
       (util/ensure 'find-file-in-project)
       (ffip-show-content-in-diff-mode (shell-command-to-string cmd)))))
 
-(with-eval-after-load 'vc-msg-git
-  (defun vc-msg-kill-info-prop (prop)
-    (let* ((info vc-msg-previous-commit-info)
-           (value (plist-get info prop)))
-      (kill-new value)
-      (message "%s => kill-ring" value)))
-  ;; open file of certain revision
-  (push '("m" "[m]agit-find-file"
-          (lambda ()
-            (let ((info vc-msg-previous-commit-info))
-              (magit-find-file (plist-get info :id )
-                               (concat (vc-msg-sdk-git-rootdir)
-                                       (plist-get info :filename))))))
-        vc-msg-git-extra)
-
-  ;; copy commit hash
-  (push `("h" "[h]ash" ,(lambda () (vc-msg-kill-info-prop :id)))
-        vc-msg-git-extra)
-
-  ;; copy author
-  (push `("a" "[a]uthor" ,(lambda () (vc-msg-kill-info-prop :author)))
-        vc-msg-git-extra))
-
-;; {{ vc-msg
-(add-hook 'vc-msg-hook
-          (defun vc-msg-hook-setup (vcs-type commit-info)
-            "Copy commit id from COMMIT-INFO to clipboard.
-VCS-TYPE is ignored."
-            (kill-new (plist-get commit-info :id))))
-
-(define-hook-setup 'vc-msg-show-code-hook
-  "Use `ffip-diff-mode' instead of `diff-mode'."
-  (util/ensure 'find-file-in-project)
-  (ffip-diff-mode))
-;; }}
-
-
 (provide 'init-git)
 ;;; init-git ends here

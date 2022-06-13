@@ -5,15 +5,16 @@
 ;; improves the word-wrapping for CJK text mixed with Latin text
 (customize-set-variable 'word-wrap-by-category t)
 
-
 (add-hook 'text-mode-hook 'my/text-mode-setup)
 (defun my/text-mode-setup ()
   (pixel-scroll-mode 1)
   (toggle-word-wrap 1)
-  (when (version<= "29.0" emacs-version)
+  (when (and (version<= "29.0" emacs-version)
+	     (fboundp 'pixel-scroll-precision-mode))
     (pixel-scroll-precision-mode -1)))
 
 (use-package markdown-mode :ensure t
+  :defer t
   :mode "\\.\\(m[k]d\\|markdown\\)\\'"
   :config
   ;; `pandoc' is better than obsolete `markdown'
@@ -62,13 +63,13 @@ Check Stolen from http://stackoverflow.com/a/26297700"
 (defun my/yas-insert-template (name)
   "Insert template when empty buffer."
   (when (= (point-min) (point-max))
-	(cl-flet ((dummy-prompt
-			   (prompt choices &optional display-fn)
-			   (declare (ignore prompt))
-			   (or (find name choices :key display-fn :test #'string=)
-				   (throw 'notfound nil))))
+    (cl-flet ((dummy-prompt
+	       (prompt choices &optional display-fn)
+	       (declare (ignore prompt))
+	       (or (find name choices :key display-fn :test #'string=)
+		   (throw 'notfound nil))))
       (let ((yas-prompt-functions '(dummy-prompt)))
-		(catch 'notfound
+	(catch 'notfound
           (yas-insert-snippet t))))))
 
 (with-eval-after-load 'tex

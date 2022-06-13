@@ -23,7 +23,8 @@
                         (font-spec :family chinese
                                    ;; :size 14
                                    )))))
-(chinese/fix-font)
+(when (display-graphic-p)
+  (chinese/fix-font))
 
 (setq face-font-rescale-alist '(("Hiragino Sans GB" . 1.2)))
 

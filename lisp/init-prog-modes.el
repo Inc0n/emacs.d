@@ -61,23 +61,22 @@
 
 (use-package nim-mode
   :defer t
-  ;; :init
   :config
   (setq nim-smie-indent-dedenters nil)
   (define-keys nim-mode-map
     [?\C-\M-a] 'nim-nav-backward-block
-     [?\C-\M-e] 'nim-nav-forward-block)
+    [?\C-\M-e] 'nim-nav-forward-block)
   (defun nim-mode-setup ()
     nil)
   (add-hook 'nim-mode-hook 'nim-mode-setup))
 
-;; mac m1 doesn't support this yet
-(use-package tree-sitter :ensure t
+(use-package tree-sitter :ensure t 
   :config
   (global-tree-sitter-mode 1)
   (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode))
 
-(use-package tree-sitter-langs :ensure t)
+(use-package tree-sitter-langs :ensure t
+  :after tree-sitter)
 
 (with-eval-after-load 'elec-pair
   (setq electric-pair-inhibit-predicate
@@ -165,7 +164,7 @@ This function can be re-used by other major modes after compilation."
   ;; http://emacsredux.com/blog/2013/04/21/camelcase-aware-editing/
 
   ;; (setq show-trailing-whitespace nil)
-  (electric-pair-mode 1) ; auto insert pairing delimiter
+  (electric-pair-mode 1)	  ; auto insert pairing delimiter
   ;; (hs-minor-mode 1)      ; code/comment fold
   ;; (turn-on-auto-fill)    ; auto indent
   ;; eldoc, show API doc in minibuffer echo area
@@ -204,29 +203,31 @@ This function can be re-used by other major modes after compilation."
 ;;                   ("Module" "^ *module +\\([^ ]+\\) *$" 1)
 ;;                   ("Variable" "^ *local +\\([^ ]+\\).*$" 1)))))
 
+(require-package 'elgot)
+
 (use-package lsp-mode :ensure t
+  :disabled
   :defer t
-  :init (setq lsp-keymap-prefix "C-c l"))
+  :init (setq lsp-keymap-prefix "C-c l")
+  (use-package lsp-ui :ensure t
+    :disabled
+    :defer t
+    :init
+    (setq lsp-ui-doc-enable nil
+          lsp-ui-doc-position 'top
+          lsp-ui-doc-include-signature t
+          lsp-ui-doc-show-with-mouse nil)
+    ;; (custom-set-faces
+    ;;  '(lsp-ui-doc-header ((t (:weight bold)))))
+    ;; (add-hook 'lsp-ui-doc-frame-hook)
+    (add-hook 'lsp-ui-doc-frame-mode-hook
+              (defun lsp-ui-doc-frame-setup ()
+		(setq-local display-line-numbers nil)))))
 
 (use-package qml-mode :ensure t)
 
-(use-package lsp-ui :ensure t
-  :defer t
-  :init
-  (setq lsp-ui-doc-enable nil
-        lsp-ui-doc-position 'top
-        lsp-ui-doc-include-signature t
-        lsp-ui-doc-show-with-mouse nil)
-  ;; (custom-set-faces
-  ;;  '(lsp-ui-doc-header ((t (:weight bold)))))
-  ;; (add-hook 'lsp-ui-doc-frame-hook)
-  (add-hook 'lsp-ui-doc-frame-mode-hook
-            (defun lsp-ui-doc-frame-setup ()
-              (setq-local display-line-numbers nil))))
-
 ;;; Web
 
-(require-package 'websocket) ; for debug debugging of browsers
 (require-package 'tagedit) ; paredit for html
 
 (define-hook-setup 'web-mode-hook
@@ -492,7 +493,7 @@ using e.g. my/skewer-load-file."
 ;; Latest rjsx-mode does not have indentation issue
 ;; @see https://emacs.stackexchange.com/questions/33536/how-to-edit-jsx-react-files-in-emacs
 
-(use-package typescript-mode :ensure t
+(use-package typescript-mode :ensure t :defer t
   :config 
   (define-hook-setup 'typescript-mode-hook
     (setq imenu-generic-expression js-common-imenu-regex-list)))
@@ -501,7 +502,7 @@ using e.g. my/skewer-load-file."
 
 ;; @see https://github.com/jorgenschaefer/elpy/issues/1729#issuecomment-880045698
 ;; Fix exit abnormally with code 1
-(use-package elpy :ensure t)
+(use-package elpy :ensure t :defer t)
 
 (use-package python :ensure t
   :defer t

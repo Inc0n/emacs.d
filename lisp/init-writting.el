@@ -83,13 +83,12 @@ Otherwise behave as if called interactively."
   :group 'center-buffer-room
   :global nil
   (if center-buffer-mode
-      (cl-flet ((resize-margin
-                 ()
-                 (let ((margin-size
-                        (/ (- (frame-width) fill-column) 2)))
-                   (message "margin-size: %d" margin-size)
-                   (if (> margin-size 0)
-                       (set-window-margins (selected-window) margin-size margin-size)))))
+      (cl-flet ((resize-margin ()
+                  (let ((margin-size
+                         (/ (- (frame-width) fill-column) 2)))
+                    (message "margin-size: %d" margin-size)
+                    (if (> margin-size 0)
+			(set-window-margins (selected-window) margin-size margin-size)))))
         (add-hook 'window-configuration-change-hook #'resize-margin 0 'local)
         (resize-margin))
     (remove-hook 'window-configuration-change-hook #'resize-margin 'local)

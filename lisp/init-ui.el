@@ -91,7 +91,6 @@
     nov-mode
     which-key-mode
     doc-view-mode
-    speedbar-mode
     gnus-summary-mode
     gnus-article-mode
     calendar-mode)

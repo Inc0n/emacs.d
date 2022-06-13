@@ -18,33 +18,30 @@
   (setq vr/match-separator-custom-face nil
 	vr/match-separator-string nil))
 
-(defun visual-replace-regexp-isearch-or-at-point (&optional arg)
-  (interactive "P")
+(defun visual-replace-regexp-text-at-point (text)
+  (interactive (list (util/thing-at-point/deselect)))
   (require 'visual-replace)
-  (let ((arg t))
-    (let* ((text (if arg
-		     (thing-at-point 'symbol)
-		   ;; (util/thing-at-point/deselect)
-		   (or isearch-string "")))
-	   (vr-args
-	    (visual-replace-make-args
-	     :from text
-	     :query t
-	     ;; :regexp t
-	     :word t)))
-      (message "here")
-      (pcase-let ((`(,args ,ranges) (visual-replace-read vr-args)))
-	;; (visual-replace args ranges)
-	args)
-      ;; (when (bounds-of-thing-at-point 'symbol)
-      ;;   (goto-char (car (bounds-of-thing-at-point 'symbol))))
-      ;; (goto-char (point))
-      ;; (let ((inhibit-quit t)
-      ;;	   (isearch-string regexp-string))
-      ;;   (with-local-quit
-      ;;	 (call-interactively 'isearch-query-replace))
-      ;;   (lazy-highlight-cleanup 'force))
-      )))
+  (when (or (null text)
+	    (string-empty-p text))
+    (user-error "Empty text to replace"))
+  (pcase-let* ((vr-args
+		(visual-replace-make-args
+		 :from text
+		 :query t
+		 ;; :regexp t
+		 :word nil))
+	       (`(,args ,ranges) (visual-replace-read vr-args)))
+    (visual-replace args ranges))
+
+  ;; (when (bounds-of-thing-at-point 'symbol)
+  ;;   (goto-char (car (bounds-of-thing-at-point 'symbol))))
+  ;; (goto-char (point))
+  ;; (let ((inhibit-quit t)
+  ;;	   (isearch-string regexp-string))
+  ;;   (with-local-quit
+  ;;	 (call-interactively 'isearch-query-replace))
+  ;;   (lazy-highlight-cleanup 'force))
+  )
 
 (defun paredit-spliced-raise ()
   (interactive)
@@ -106,7 +103,7 @@ The two functions are applied in sequence."
   (define-keys paredit-mode-map
     [?\C-\M-w] (sexp-and-normal #'mark-sexp  #'kill-ring-save)
     [C-m ?g ?r] (sexp-and-normal #'mark-sexp #'copy-and-paste)
-    (kbd "M-;") (sexp-and-normal #'mark-sexp #'comment-or-uncomment-dwim))
+    (kbd "C-M-;") (sexp-and-normal #'mark-sexp #'comment-or-uncomment-dwim))
   (my/evil-define-key '(normal visual) paredit-mode-map
     "y" (sexp-and-normal #'mark-sexp  #'evil-yank)
     "gr" (sexp-and-normal #'mark-sexp #'copy-and-paste)
@@ -195,7 +192,7 @@ The two functions are applied in sequence."
 
   "lo" (lambda () (interactive) (occur-symbol-at-mouse nil))
   "ll" #'isearch-repeat-forward
-  "lq" #'visual-replace-regexp-isearch-or-at-point
+  "lq" #'visual-replace-regexp-text-at-point
   "ld" #'isearch-within-defun
 
   "mp" 'pop-to-mark-command ;; 'avy-pop-mark
@@ -229,11 +226,8 @@ The two functions are applied in sequence."
 
   "xw" #'kill-buffer-and-window
   ;;
-  "ur" #'winner-redo
   "uu" #'winner-undo
-  "wr" #'rotate-two-split-window
-  ;;
-  (kbd "SPC") 'just-one-space)
+  "wr" #'rotate-two-split-window)
 
 (define-keys leader-keymap
   [?\C-s] #'completing-swiper

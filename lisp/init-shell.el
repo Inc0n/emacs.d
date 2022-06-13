@@ -2,26 +2,16 @@
 
 ;;; Code:
 
-(defun my/kill-process-buffer-when-exit (process event)
-  "Kill buffer of PROCESS when it's terminated.
-EVENT is ignored."
-  (ignore event)
-  (when (memq (process-status process) '(signal exit))
-    (kill-buffer (process-buffer process))))
-
 ;; {{ @see https://coredumped.dev/2020/01/04/native-shell-completion-in-emacs/
 (with-eval-after-load 'shell
+  (defun my/kill-process-buffer-when-exit (process event)
+    "Kill buffer of PROCESS when it's terminated.
+EVENT is ignored."
+    (ignore event)
+    (when (memq (process-status process) '(signal exit))
+      (kill-buffer (process-buffer process))))
   ;; Enable auto-completion in `shell'.
   (native-complete-setup-bash))
-
-;; `bash-completion-tokenize' can handle garbage output of "complete -p"
-(defun my/bash-completion-tokenize-hack (orig-fun beg end &rest args)
-  "Original code extracts tokens line by line of output of \"complete -p\"."
-  (and
-   ;; filter out some weird lines
-   (string-match-p "^complete " (buffer-substring beg end))
-   (apply orig-fun beg end args)))
-(advice-add 'bash-completion-tokenize :around #'my/bash-completion-tokenize-hack)
 
 (define-hook-setup 'shell-mode-hook
   "Set up `shell-mode'."
@@ -41,11 +31,12 @@ EVENT is ignored."
 ;; TODO - see if process buffer would exit without this advice
 ;; (advice-add 'term-sentinel :after #'my/kill-process-buffer-when-exit)
 
-;; utf8
-(defun my/term-use-utf8 ()
-  ;; "Ensure the ansi-term has the utf8 encoding."
-  (set-buffer-process-coding-system 'utf-8-unix 'utf-8-unix))
-(add-hook 'term-exec-hook #'my/term-use-utf8)
+(with-eval-after-load 'term
+  ;; utf8
+  (defun my/term-use-utf8 ()
+    ;; "Ensure the ansi-term has the utf8 encoding."
+    (set-buffer-process-coding-system 'utf-8-unix 'utf-8-unix))
+  (add-hook 'term-exec-hook #'my/term-use-utf8))
 ;; }}
 
 ;; {{ comint-mode
