@@ -1,4 +1,6 @@
-;; -*- coding: utf-8; lexical-binding: t; -*-
+;;; init-bbdb --- bbdb -*- coding: utf-8; lexical-binding: t; -*-
+;;; Commentary:
+;;; Code:
 
 (defun message-mode-hook-setup ()
   (bbdb-initialize 'message)
@@ -41,3 +43,4 @@
   (setq gmail2bbdb-exclude-people-without-name t))
 
 (provide 'init-bbdb)
+;;; init-bbdb.el ends here

@@ -55,7 +55,65 @@ EVENT is ignored."
 ;; }}
 
 (with-eval-after-load 'gdb-mi
-  (define-key gdb-inferior-io-mode-map "q" 'quit-window))
+  (define-key gdb-inferior-io-mode-map "q" 'quit-window)
+  (add-hook 'comint-output-filter-functions #'ansi-color-process-output)
+  (add-hook 'gud-mode-hook 'ansi-color-for-comint-mode-on))
+
+(use-package vterm :ensure nil
+  :config
+  (add-to-list 'vterm-eval-cmds '("quick-view" posframe-quick-view-file))
+  (setq vterm-environment (list (format "EMACS_PATH=%s" user-emacs-directory)))
+
+  ;; setting these keys to nil to allow them to function normally
+  (define-keys vterm-mode-map
+    [?\C-\M-b] 'vterm-send-key-interactive
+    [?\C-\M-f] 'vterm-send-key-interactive
+    [remap undo] 'vterm-undo
+    [?\M->] nil
+    [?\M-w] nil
+    [?\C-s] nil)
+
+  (defun vterm-cd (directory)
+    (interactive
+     (list (let ((arg current-prefix-arg))
+			 (cond ((null arg) default-directory)
+				   ((listp arg) (read-directory-name ""))
+				   (:else (user-error "Unexpcted prefix arg %s" arg))))))
+    (let* ((vterm-buffers
+			(--filter
+			 (let ((name (buffer-name it)))
+			   (and (string-match-p "vterm" name)
+					(not (string-match-p "org" name))
+					(with-current-buffer it
+					  (eq major-mode 'vterm-mode))))
+			 (buffer-list)))
+			 (vterm-buffer
+			  (cond ((null vterm-buffers) (user-error "No vterm buffer alive"))
+					((null (cdr vterm-buffers)) (car vterm-buffers))
+					(:else (completing-read "Vterm: "
+											(mapcar 'buffer-name vterm-buffers))))))
+      (pop-to-buffer vterm-buffer)
+      (vterm-send-string "cd ")
+      (vterm-send-string directory)
+      (vterm-send-return)))
+
+  (defun vterm-translate-event-to-args (event)
+    (let ((modifiers (event-modifiers event))
+		  (base (event-basic-type event)))
+      (list (char-to-string base)
+			(memq 'shift modifiers)
+			(memq 'meta modifiers)
+			(memq 'control modifiers))))
+
+  (defun vterm-send-key-interactive
+      (key &optional shift meta ctrl accept-proc-output)
+    (interactive (vterm-translate-event-to-args last-command-event))
+    (vterm-send-key key shift meta ctrl accept-proc-output))
+
+  (add-hook 'vterm-mode-hook
+			(defun vterm-mode-setup ()
+			  (vterm-send-string
+			   "source $EMACS_PATH/etc/emacs-vterm-zsh.sh\n"))))
 
 (provide 'init-shell)
 ;;; init-shell.el ends here

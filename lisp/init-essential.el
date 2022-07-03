@@ -28,14 +28,14 @@
 ;; }}
 
 ;; {{ narrow region
-
 ;; @see https://gist.github.com/mwfogleman/95cc60c87a9323876c6c
 ;; fixed to behave correctly in org-src buffers; taken from:
 ;; https://lists.gnu.org/archive/html/emacs-orgmode/2019-09/msg00094.html
 (defun narrow-or-widen-dim (&optional use-indirect-buffer)
   "If the buffer is narrowed, it widens.
-Otherwise, it narrows to region, or Org subtree.
-If USE-INDIRECT-BUFFER is not nil, use `indirect-buffer' to hold the widen content."
+Otherwise, it narrows to region, or Org subtree.  If
+USE-INDIRECT-BUFFER is not nil, use `indirect-buffer' to hold the
+widen content."
   (interactive "P")
   (cond
    ((and (not use-indirect-buffer) (buffer-narrowed-p))
@@ -68,18 +68,17 @@ If USE-INDIRECT-BUFFER is not nil, use `indirect-buffer' to hold the widen conte
 ;; }}
 
 (cl-case system-type
-  (gnu 
+  (gnu
    (setq interprogram-cut-function 'wl-copy)
    (setq interprogram-paste-function 'wl-paste))
   (darwin
    (setq mac-option-modifier 'meta
-	 mac-command-modifier 'super
-	 mac-right-option-modifier 'none)
+		 mac-command-modifier 'super
+		 mac-right-option-modifier 'none)
    (define-keys global-map
      [?\s-v] 'yank
      [?\s-s] 'save-buffer
      [?\C-\s-f] 'toggle-frame-fullscreen)
-   (define-key input-decode-map (kbd "M-3") "#")
 
    (with-eval-after-load 'select
      ;; prevent mark (selection) save to kill-ring
@@ -91,17 +90,10 @@ If USE-INDIRECT-BUFFER is not nil, use `indirect-buffer' to hold the widen conte
   ;; [?\C-i] [C-i]           ; let C-i be C-i instead of TAB
   ;; actually let's use this one in place of evil-escape
   ;; [?\C-\[] nil                      ; let C-[ be C-[ instead of ESC
-  [?\C-m] [C-m]				; let C-m be C-m instead of RET
+  [?\C-m] [C-m]							; let C-m be C-m instead of RET
   [?\C-\[] [C-\[])
 
-(define-key global-map [C-\[]
-  [?\C-g])
-
-;; to disable C-[
-;; (define-keys global-map
-;;   [C-\[] nil
-;;   [?\C-\[] esc-map)
-;; (define-keys input-decode-map [?\C-\[] nil)
+(define-key global-map [C-\[] [?\C-g])
 
 ;; {{ Write backup files to its own directory
 ;; @see https://www.gnu.org/software/emacs/manual/html_node/tramp/Auto_002dsave-and-Backup.html
@@ -161,13 +153,18 @@ If USE-INDIRECT-BUFFER is not nil, use `indirect-buffer' to hold the widen conte
   ;; with-eval-after-load 'tramp
   (add-to-list 'backup-directory-alist
                (cons tramp-file-name-regexp nil))
-  ;; @see https://github.com/syl20bnr/spacemacs/issues/1921
+  ;; @see https://github.com/sly20bnr/spacemacs/issues/1921
   ;; If you tramp is hanging, you can uncomment below line.
   ;; (setq tramp-ssh-controlmaster-options "-o ControlMaster=auto -o ControlPath='tramp.%%C' -o ControlPersist=no")
   (setq tramp-verbose 3)
   (setq tramp-debug-buffer t)
   (setq tramp-default-method "ssh")
   (setq tramp-chunksize 8192))
+
+(defun reopen-with-sudo (file)
+  "Reopen a FILE with sudo."
+  (interactive (list (buffer-file-name (current-buffer))))
+  (find-file (concat "/sudo::" file)))
 
 ;; Undo
 ;; Store more undo history to prevent loss of data
@@ -176,9 +173,13 @@ If USE-INDIRECT-BUFFER is not nil, use `indirect-buffer' to hold the widen conte
       undo-strong-limit 8000000
       undo-outer-limit 8000000)
 
+;; default is 60, way too small
+(setq kill-ring-max 120)
+
 (use-package undohist :ensure t
   :defer t
   :init
+  (setq undohist-ignored-files '(".epub$"))
   (autoload 'undohist-initialize "undohist")
   (undohist-initialize))
 

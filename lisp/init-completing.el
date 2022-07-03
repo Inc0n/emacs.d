@@ -1,4 +1,4 @@
-;;; init-completing --- completing-read -*- coding: utf-8; lexical-binding: t; -*-
+;;; init-completing --- completions -*- coding: utf-8; lexical-binding: t; -*-
 
 ;;; Commentary:
 ;; My Emacs completing framework setup
@@ -7,8 +7,7 @@
 
 ;;; Code:
 
-(use-package consult
-  :ensure t
+(use-package consult :ensure t
   :defer t
   :config
   (setq consult-line-start-from-top nil)
@@ -26,8 +25,7 @@
             (car (project-roots project))))))
 
 ;; provide annotations in minibuffer
-(use-package marginalia
-  :ensure t
+(use-package marginalia :ensure t
   :defer 1
   :hook (after-init . marginalia-mode)
   :config
@@ -55,40 +53,19 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
 (use-package vertico :ensure t
   :defer t
   :config
-  (setq completion-in-region-function
-        (lambda (&rest args)
-          (apply (if (or vertico-mode icomplete-mode)
-                     #'consult-completion-in-region
-                   #'completion--in-region)
-                 args)))
+  (setq-default completion-in-region-function #'consult-completion-in-region)
   ;; Optionally enable cycling for `vertico-next' and `vertico-previous'.
   ;; (setq vertico-cycle nil)
   ;; Disable dynamic resize, this is too jumpy
-  (setq vertico-resize nil)			   ; 'grow-only
+  (setq vertico-resize nil)		; 'grow-only
   ;; C-prefix is better since C-n and C-p, better ergonomics
-  (define-key vertico-map (kbd "C-o") 'embark-act) ; embark intergration
-  (define-key vertico-map [C-return] #'vertico-exit-input)
+  (define-keys vertico-map
+    (kbd "C-o") 'embark-act		; embark intergration
+    [C-return] #'vertico-exit-input)
   :init (vertico-mode 1))
 
 (use-package embark :ensure t
   :config (define-key embark-file-map "f" 'my/browse-file))
-
-(use-package icomplete
-  ;; downside, narrow Emacs, would not resize minibuffer appropriately.
-  ;; un-configurable keymap
-  :disabled
-  :config
-  (setq icomplete-scroll t              ; scroll instead rotate
-        icomplete-max-delay-chars 0
-        icomplete-show-matches-on-no-input t)
-  ;; unable to find the keymap where icomplete-ret is set, so replace it instead
-  (fset 'icomplete-ret 'icomplete-force-complete-and-exit)
-  ;; (define-keys icomplete-vertical-mode-minibuffer-map
-  ;;   #'icomplete-ret
-  ;;   [return] #'minibuffer-complete-and-exit)
-  :init
-  (icomplete-mode 1)
-  (icomplete-vertical-mode 1))
 
 ;; more at
 ;; https://kristofferbalintona.me/posts/cape/
@@ -96,7 +73,6 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
   :defer t
   :init
   (define-keys global-map
-    (kbd "C-c p p") 'completion-at-point ;; capf
     (kbd "C-c p t") 'complete-tag        ;; etags
     (kbd "C-c p d") 'cape-dabbrev        ;; or dabbrev-completion
     (kbd "C-c p f") 'cape-file
@@ -114,7 +90,6 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
   (add-to-list 'completion-at-point-functions #'cape-file)
   (add-to-list 'completion-at-point-functions #'cape-tex)
   (add-to-list 'completion-at-point-functions #'cape-dabbrev)
-  ;; (add-to-list 'completion-at-point-functions (cape-company-to-capf #'company-yasnippet))
   ;; (cape-super-capf #'cape-ispell #'cape-dabbrev)
   
   ;; (add-to-list 'completion-at-point-functions #'cape-keyword)
@@ -122,17 +97,108 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
   ;; (add-to-list 'completion-at-point-functions #'cape-rfc1345)
   ;; (add-to-list 'completion-at-point-functions #'cape-abbrev)
   ;; (add-to-list 'completion-at-point-functions #'cape-ispell)
-  ;; (add-to-list 'completion-at-point-functions #'cape-dict)
   ;; (add-to-list 'completion-at-point-functions #'cape-symbol)
   ;; (add-to-list 'completion-at-point-functions #'cape-line)
   )
 
 (use-package corfu :ensure t
-  :disabled
+  :config
+  ;; reset this back to desired configuration
+  (setq-default completion-in-region-function 'consult-completion-in-region)
+  (add-hook 'corfu-mode-hook
+	    (lambda () (kill-local-variable 'completion-in-region-function)))
+  ;; No need for corfu-complete
+  (define-keys corfu-map
+	[remap completion-at-point] nil
+	[?\M-d] #'corfu-doc-toggle
+	[?\M-p] #'corfu-doc-scroll-down
+	[?\M-n] #'corfu-doc-scroll-up)
   :init
+  (use-package corfu-doc :defer t :ensure t)
+  
   (setq corfu-auto t)
   (setq corfu-auto-delay 0.1)
-  (corfu-global-mode 1))
+  (setq corfu-on-exact-match 'insert)
+  (global-corfu-mode 1))
+
+(use-package tempel :ensure t
+  :config
+  (define-keys tempel-map
+    [?\C-n] 'tempel-next
+    [?\C-p] 'tempel-previous
+    [tab] 'tempel-next
+    [shift-tab] 'tempel-previous)
+  :init
+  (defun tempel-create-new-template ()
+	"Potentially create a new snippet quickly and save to templates file."
+	(interactive)
+	;; create a new temporary buffer
+	;; get major mode
+	;; prompt for template name
+	;; define template on save
+	;; MAYBE save template to config file
+	'TODO)
+  
+  (setq tempel-path (my/emacs-d "tempel-templates.el"))
+  (defun tempel-define-template (modes name exp)
+    (pcase-let* ((modes (if (listp modes) modes
+						  (list modes)))
+				 (`(,mode-name ,plist . ,templates)
+				  (--find (equal modes (car it)) tempel--path-templates))
+				 (template
+				  (assoc name templates)))
+      (if template
+		  (setf (cdr template) exp)
+		(push (list modes nil (list name exp))
+			  (cdr tempel--path-templates)))))
+
+  (defun tempel-parse-template (string)
+    (cl-labels
+		((aux (string acc)
+			  (if (string-empty-p string)
+				  (nreverse acc)
+				(if-let* ((index (cl-position ?$ string)))
+					(cond ((= (aref string (1+ index)) ?\()
+						   (pcase-let ((`(,obj . ,idx)
+										(read-from-string string (1+ index))))
+							 (message "%s %s" obj idx)
+							 (aux (cl-subseq string idx)
+								  (-cons* obj
+										  (cl-subseq string 0 index)
+										  acc))))
+						  ((string-match "[rn]>\\|[prn>&%oq]"
+										 string (1+ index))
+						   (pcase-let ((`(,start ,end)
+										(match-data 0)))
+							 (aux (cl-subseq string end)
+								  (if (= index 0)
+									  (cons (intern
+											 (cl-subseq string start end))
+											acc)
+									(-cons* (intern
+											 (cl-subseq string start end))
+											(cl-subseq string 0 index)
+											acc)))))
+						  (:else
+						   (user-error "Invalid $ exp at %s %d %s"
+									   string index
+									   (cl-subseq string index))))
+				  (nreverse (cons string acc))))))
+      (aux string '())))
+
+  ;; Setup completion at point
+  (defun tempel-setup-capf ()
+    ;; Add the Tempel Capf to `completion-at-point-functions'.
+    ;; `tempel-expand' only triggers on exact matches. Alternatively use
+    ;; `tempel-complete' if you want to see all matches, but then you
+    ;; should also configure `tempel-trigger-prefix', such that Tempel
+    ;; does not trigger too often when you don't expect it. NOTE: We add
+    ;; `tempel-expand' *before* the main programming mode Capf, such
+    ;; that it will be tried first.
+    (setq-local completion-at-point-functions
+				(cons #'tempel-expand completion-at-point-functions)))
+  (add-hook 'prog-mode-hook 'tempel-setup-capf)
+  (add-hook 'text-mode-hook 'tempel-setup-capf))
 
 (setq completion-cycle-threshold 3)
 
@@ -140,65 +206,70 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
 
 (defvar my/enable-pinyin-in-completing-read nil)
 
-(defun toggle-pinyin-in-completing-read ()
-  "Toggle variable `my/enable-pinyin-in-completing-read'."
-  (interactive)
-  (message "pinyin in completing read: %s"
-           (setq my/enable-pinyin-in-completing-read
-                 (not my/enable-pinyin-in-completing-read))))
+(setq completion-styles '(fussy)
+      completion-category-defaults nil
+      completion-category-overrides '((file (styles partial-completion))))
+
+(defun match-pinyin (str)
+    "A completion style for pinyin that builds on STR.
+To avoid lag, it does not match if length is more than 2000."
+    ;; orderless-regexp
+    ;; Needs to be careful for the regexp to get too long.
+    (let ((pinyin-regexp (pyim-cregexp-build str)))
+      (if (<= (length pinyin-regexp) 2000)
+          pinyin-regexp
+        (message "%s is too long for pinyin" (length pinyin-regexp))
+        str)))
 
 (use-package orderless :ensure t
   :defer t
-  :init
-  (setq completion-styles '(orderless)
-        completion-category-defaults nil
-        completion-category-overrides '((file (styles partial-completion))))
   :config
   (setq orderless-matching-styles
         '(orderless-literal
           orderless-regexp
-          match-flex-or-pinyin))
-  (defun match-flex-or-pinyin (str)
-    "Add pinyin search support to orderless, builds STR.
-Otherwise, uses orderless-flex. Avoiding computation lag."
-    ;; orderless-regexp
-    ;; Needs to be careful for the regexp to get too long.
-    (if my/enable-pinyin-in-completing-read
-        (let ((pinyin-regexp (pyim-cregexp-build str)))
-          (if (<= (length pinyin-regexp) 2000)
-              pinyin-regexp
-            (message "%s is too long for pinyin" (length pinyin-regexp))
-            str))
-      (orderless-flex str))))
+          orderless-flex)))
 
-(use-package dash-docs :ensure t)
+;; it has other scoring/sorting backends such as fzf
+(use-package fussy :ensure t :defer t
+  :commands (fussy-all-completions)
+  :config
+  ;; fussy-fzf-native-score
+  (defun fussy-filter-orderless (string table pred _point)
+	"Match STRING to the entries in TABLE.
 
-;; (lookup-key vertico-map (kbd "M-q"))
-(defun completing--replace-search (search)
-  "Replace the SEARCH with string from `read-string'."
-  (if (string-empty-p search)
-      (user-error "Enter some text first!")
-    (let ((to-string (read-string "To: "))
-          (buf (seq-find (lambda (x) (not (minibufferp x)))
-			             (buffer-list))))
-      (with-selected-window (get-buffer-window buf)
-        (with-current-buffer buf
-	      (query-replace-regexp search to-string)
-	      (exit-minibuffer))))))
+Use `orderless' for filtering by passing STRING, TABLE and PRED to
+`orderless-filter'.  _POINT is not used."
+	(when-let ((completions (orderless-filter string table pred)))
+	  (pcase-let ((`(,prefix . ,pattern)
+				   (orderless--prefix+pattern string table pred)))
+		(list (orderless-highlight-matches pattern completions)
+			  pattern prefix))))
+  (setq fussy-filter-fn 'fussy-filter-orderless
+		fussy-score-fn 'flx-score))
+
+(use-package fzf-native
+  :straight
+  (:repo "dangduc/fzf-native"
+   :host github
+   :files (:defaults "*.c" "*.h" "*.txt"))
+  :init
+  (setq fzf-native-always-compile-module t)
+  (setq fzf-native-module-cmake-args "-DCMAKE_C_FLAGS='-O3'")
+  :config
+  (fzf-native-load-own-build-dyn))
 
 (defun completing-swiper ()
   "My swiper, which also can record macro at end of search."
   (interactive)
   (consult-line (util/thing-at-point/deselect))
-  (completing--yank-search (car consult--line-history))
-  (evil-record-macro ?0))
+  (completing--yank-search (car consult--line-history)))
 
-(defun completing-ripgrep (init-input arg)
+(defun completing-ripgrep (init-input)
   "My version of ripgrep.
 ARG can be used to control the behaviour of `consult-ripgrep'
 A single `universal-argument' can disable preview.
 Two `universal-argument' to change read a different directory to ripgrep."
-  (interactive (list (util/thing-at-point/deselect) current-prefix-arg))
+  (interactive (list (if current-prefix-arg (util/thing-at-point/deselect) "")))
   (require 'consult)
   ;; (let ((default-directory default-directory))
   ;;   (when (consp arg)
@@ -207,7 +278,8 @@ Two `universal-argument' to change read a different directory to ripgrep."
   ;;            "Directory: "
   ;;            default-directory nil nil nil #'file-directory-p))))
   (consult-ripgrep nil init-input)
-  (completing--yank-search (car consult--grep-history)))
+  (completing--yank-search
+   (string-trim-left (car consult--grep-history) "#")))
 
 (defun completing-ripgrep-backups ()
   "Ripgrep search the backups of this current buffer file."
@@ -271,22 +343,18 @@ use FILTER predicate to filter desired packages to see."
 (defun list-installed-themes ()
   "List all installed themes."
   (interactive)
-  (selectsel-list-packages
-   nil (lambda (pkg)
-         (string-match-p "-themes?$" (symbol-name pkg)))))
+  (completing-packages
+   nil
+   (lambda (pkg)
+     (string-match-p "-themes?$" (symbol-name pkg)))))
 
 (defun completing--yank-search (regex-str)
-  "Set search item as str.
-Argument REGEX-STR the regex str to find in buffer."
-  (when regex-str
-    (re-search-forward regex-str (line-end-position) t)
-    (if (bound-and-true-p evil-mode)
-        (when (save-excursion
-                (evil-search regex-str t t (line-beginning-position)))
-          ;; this would make cursor at beginning of selection
-          (evil-search-previous))
-      (isearch-mode t)
-      (isearch-yank-string regex-str))))
+  "Set search item as REGEX-STR in buffer using `isearch-mode'."
+  (unless (stringp regex-str)
+	(user-error "No a string, %s" regex-str))
+  (re-search-forward regex-str (line-end-position) t)
+  (isearch-mode t)
+  (isearch-yank-string regex-str))
 
 ;;; Experiments
 
@@ -309,8 +377,5 @@ Argument REGEX-STR the regex str to find in buffer."
 
 ;; (format "%s" (keymap-completion-candidates evil-insert-state-map))
 
-;; selectrum evil mark
-;; @see https://github.com/raxod502/selectrum/wiki/Useful-Commands#evil-marks
-
 (provide 'init-completing)
-;;; init-completing ends here
+;;; init-completing.el ends here

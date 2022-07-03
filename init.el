@@ -68,8 +68,8 @@
   (require 'init-spelling)
   (require 'init-ibuffer)
   (require 'init-completing)
-  (require 'init-yasnippet)
-  (require 'init-company)
+  ;; (require 'init-yasnippet)
+  ;; (require 'init-company)
 
   (require 'init-chinese) ;; cannot be idle-required
   (require 'init-keyfreq) ;; need statistics of keyfreq asap

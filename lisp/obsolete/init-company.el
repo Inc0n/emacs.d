@@ -7,8 +7,8 @@
 (require-package 'company-c-headers)
 (require-package 'company-statistics)
 
-(add-hook 'after-init-hook
-          (lambda () (run-with-idle-timer 2 nil 'global-company-mode)))
+;; (add-hook 'after-init-hook
+;;           (lambda () (run-with-idle-timer 2 nil 'global-company-mode)))
 
 (with-eval-after-load 'company
   ;; @see https://github.com/company-mode/company-mode/issues/348

@@ -7,3 +7,21 @@ https://tecosaur.github.io/emacs-config/config.html
 https://github.com/andreyorst/dotfiles/tree/master/.config/emacs
 
 https://github.com/hick/emacs-chinese
+
+* Shell
+
+https://www.reddit.com/r/emacs/comments/sbdmr7/improving_shell_in_emacs/
+
+- [[https://github.com/akermu/emacs-libvterm][emacs-libvterm]]
+  a fast external terminal emulator
+- shx
+  “shell-extras” extends comint-mode in Emacs, that allows image display
+- [[https://gitlab.com/niklaseklund/dtache][dtache]]
+  Detach and manage processes from Emacs
+
+* Themes
+
+- modus themes by Protesilaos
+  A high-contrast theme
+  https://protesilaos.com/emacs/modus-themes
+- doom-themes 
