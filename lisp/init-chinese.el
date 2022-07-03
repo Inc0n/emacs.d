@@ -16,12 +16,14 @@
          ;; "DFFangSongW3-A"
          ;; "AaFangSong (Non-Commercial Use)"
          ;; "STFangSong"
-         ;; "Kai"
-         "Hiragino Sans GB"))
+	 "Songti SC"
+         ;; "KaiTi SC"
+	 ;; "Hiragino Sans GB"
+	 ))
     (dolist (charset '(kana han symbol cjk-misc bopomofo))
       (set-fontset-font (frame-parameter nil 'font) charset
                         (font-spec :family chinese
-                                   ;; :size 14
+                                   ;; :size 16
                                    )))))
 (when (display-graphic-p)
   (chinese/fix-font))
@@ -63,7 +65,7 @@ ARG will allow selection of input method."
          (when evil/state-before-im-change
            (evil-change-state evil/state-before-im-change)
            (setq evil/state-before-im-change nil))
-	     (message "IME off!"))))
+	 (message "IME off!"))))
 ;; }}
 
 ;; {{ cal-china-x setup

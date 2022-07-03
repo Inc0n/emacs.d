@@ -27,33 +27,6 @@
 ;;   (define-key org-clock-mode-line-map [header-line mouse-2] #'org-clock-goto)
 ;;   (define-key org-clock-mode-line-map [header-line mouse-1] #'org-clock-menu))
 
-
-(when nil
-  (defvar my/langtool-check-time 2.0)
-  (defvar my/langtool-last-modified-tick nil)
-  (defvar my/langtool-timer nil)
-  ;; (defun my/langtool flycheck-grammarly--reset-request () nil)
-  (defun my/langtool--after-change-functions (&rest _)
-    "After change function to check if content change."
-    (message "pre-checking")
-    (unless (eq my/langtool-last-modified-tick
-		(buffer-modified-tick))
-      (message "checking")
-      (when my/langtool-timer
-	(cancel-timer my/langtool-timer))
-      (setq my/langtool-timer
-            (run-with-timer my/langtool-check-time nil
-                            'langtool-check-buffer))))
-  (defun my/langtool-mode ()
-    (interactive)
-    (if (and flycheck-mode (derived-mode-p 'text-mode))
-	(progn
-	  (message "added langtool after change function")
-	  (add-hook 'after-change-functions
-		   #'my/langtool--after-change-functions nil t))
-      (remove-hook 'after-change-functions
-		   #'my/langtool--after-change-functions t))))
-
 (use-package langtool :ensure t
   :init
   (setq langtool-bin "languagetool")
@@ -72,12 +45,6 @@
   :init
   (setq flycheck-languagetool-server-jar "/opt/homebrew/Cellar/languagetool/5.7/libexec/languagetool-server.jar")
   (setq flycheck-checker-error-threshold nil))
-
-(require-package 'flycheck-grammarly)
-;; (flycheck-grammarly-setup)
-(with-eval-after-load 'flycheck
-  (setq flycheck-grammarly--show-debug-message t)
-  (setq flycheck-grammarly-check-time 0.8))
 
 (add-hook 'org-mode-hook 'org-mode-hook-setup)
 (defun org-mode-hook-setup ()
@@ -117,13 +84,13 @@
                  (char-equal char ?<)))))
 
 (with-eval-after-load 'org
-  (add-to-list 'org-export-backends 'md) ; markdown export
+  ;; (add-to-list 'org-export-backends 'md) ; markdown export
 
   ;; org-startup-options
   (setq org-startup-with-latex-preview nil
         org-startup-indented t
         org-startup-folded t
-	org-hide-leading-stars nil
+		org-hide-leading-stars nil
         org-pretty-entities t)
   ;; org
   (setq org-tags-column -50
@@ -159,8 +126,6 @@
   (define-key org-mouse-map [mouse-2] nil) ; disable `org-open-at-mouse'
 
   (define-keys org-mode-map
-    [?\C-\S-p] 'org-move-subtree-up
-    [?\C-\S-n] 'org-move-subtree-down
     [C-return] 'my/org-insert
     [?_] 'my/sub-superscript
     [?^] 'my/sub-superscript)
@@ -213,7 +178,8 @@
   ;; org latex preview scale
   ;; (plist-put org-format-latex-options :background "Transparent")
   (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.4))
-  (setq org-image-actual-width t)
+  (setq org-image-actual-width t
+		org-display-remote-inline-images 'cache)
 
   (org-babel-do-load-languages
    'org-babel-load-languages
@@ -222,19 +188,13 @@
      (eshell . t)
      (shell . t)
      (lisp . t)
-     (emacs-lisp . t)
-     (julia . t)
+     (vterm-ob . t)
+     (gdb . t)
      (calc . t)))
 
   ;; Add box around org-todo, to highlight different if background theme
   ;; too similar
   ;; (set-face-attribute 'org-todo nil :box `(:line-width 1))
-
-  (defun my/enter-evil-insert (&rest args)
-    (when (and (bound-and-true-p evil-mode)
-               (evil-normal-state-p))
-      (evil-insert-state 1)))
-  (advice-add 'org-insert-structure-template :after 'my/enter-evil-insert)
 
   (require 'org-tempo)
 
@@ -252,16 +212,23 @@
   (defun my/latex-auto-ref-link-export (path _desc backend channel)
     "Exporting link using autoref of PATH for latex BACKEND."
     (cond ((eq 'latex backend)
-	   ;; (message "unknown channel var %s" (list (car channel)))
-	   (format "\\autoref{%s}" path))
-	  (t (message "unknown backend %s for path: %s" backend path))))
+		   ;; (message "unknown channel var %s" (list (car channel)))
+		   (format "\\autoref{%s}" path))
+		  (t (message "unknown backend %s for path: %s" backend path))))
 
   ;; setup lst: and table: for \autoref
-  (dolist (type '(;; "lst" "table" "fig"
-		  "autoref"))
-    (org-link-set-parameters type
-			     :export 'my/latex-auto-ref-link-export
-			     :follow 'org-link-search)))
+  (org-link-set-parameters "autoref"
+						   :export 'my/latex-auto-ref-link-export
+						   :follow 'org-link-search))
+
+(with-eval-after-load 'ob-core
+  ;; fix jupyter ANSI color sequence
+  ;; @see https://github.com/nnicandro/emacs-jupyter/issues/366
+  (defun display-ansi-colors ()
+    ;; ansi-color-compilation-filter
+    (let ((inhibit-read-only t))
+      (ansi-color-apply-on-region (point-min) (point-max))))
+  (add-hook 'org-babel-after-execute-hook #'display-ansi-colors))
 
 (with-eval-after-load 'org-indent
   ;; change per level to 1 if not using org-bars
@@ -296,12 +263,6 @@
 
 (require-package 'ob-async)
 (require-package 'jupyter)
-
-;; This allows org C-c C-c to use org-capture
-;; (define-hook-setup org-ctrl-c-ctrl-c-final-hook :capture
-;;   (org-capture)
-;;   ;; return t to indicate C-c C-c actions has been taken by this function
-;;   t)
 
 (defun org-capture-prepare-org-capture ()
   "Indent org capture buffer for org capture."
@@ -435,12 +396,13 @@
                                  "s"))))))
     "n/a"))
 
-(use-package org-remark
-  :disabled
-  :straight (org-remark :type git :host github :repo "nobiot/org-remark"))
-
 (use-package org-modern :ensure t
   :defer t
+  :config
+    (set-face-attribute 'org-modern-block-keyword
+		      nil
+		      :weight 'bold
+		      :box '(:line-width 1))
   :init
   (setq org-modern-keyword "‣"
         ;; let org-superstar stylize the stars
@@ -476,14 +438,7 @@
                                                   ;; ("PROJECT" . ?Π)
                                                   ("HOLD" . ?⊘)))
   (setq org-superstar-cycle-headline-bullets nil
-        org-superstar-special-todo-items t)
-  ;; fix jupyter ANSI color sequence 
-  ;; @see https://github.com/nnicandro/emacs-jupyter/issues/366
-  (defun display-ansi-colors ()
-    ;; ansi-color-compilation-filter
-    (let ((inhibit-read-only t))
-      (ansi-color-apply-on-region (point-min) (point-max))))
-  (add-hook 'org-babel-after-execute-hook #'display-ansi-colors))
+	org-superstar-special-todo-items t))
 
 ;; ☐☑⦷
 
@@ -559,29 +514,6 @@ FORWARD will go forward unless nil"
         (org-next-item))
     (org-next-visible-heading arg)))
 
-(defun org-count-words (start end)
-  "This is the count words version that skips comments.
-It will operate between the region from START to END."
-  (interactive "r")
-  ;; "^[ \t]*#[+ ].*"
-  ;; (count-matches (rx line-start (* space) "#" (any " " "+") (* any)))
-  (save-excursion
-    (save-restriction
-      (narrow-to-region start end)
-      (goto-char (point-min))
-      (cl-loop with end = (point-max)
-               for line-beg = (line-beginning-position)
-               for line-end = (line-end-position)
-               until (= line-end end)
-               ;; unless (org-at-comment-p)
-	       unless (looking-at "^[ \t]*#[+ ]")
-               sum 1 into lines-count
-               and sum (count-words line-beg line-end) into words-count
-               and sum (- line-end line-beg) into chars-count
-               do (goto-char (1+ line-end))
-               finally (message "region has %d lines, %d words, %d characters"
-                                lines-count words-count chars-count)))))
-
 (defun org-latex-pdf-count-words ()
   "This is the count words version that skips comments.
 It will operate between the region from START to END."
@@ -597,6 +529,7 @@ It will operate between the region from START to END."
 (with-eval-after-load 'ox-html
   (setq org-html-validation-link nil)
   (defun org-export-chinese-read ()
+    "Export org file for better chinese reading in html."
     (interactive)
     (let ((org-html-head-include-default-style nil)
           (org-html-head (format
@@ -637,10 +570,10 @@ It will operate between the region from START to END."
   (add-to-list/s 'org-latex-listings-langs
                  '((text "Text")
                    (javascript "Javascript")
-				   (jupyter-python "Python")
+		   (jupyter-python "Python")
                    (asm "Assembler")
                    (calc "Python")
-				   (yaml "yaml")))
+		   (yaml "yaml")))
   
   (defun my-latex-export-example-blocks (text backend info)
     "Export example blocks as custom results env."
@@ -656,9 +589,6 @@ It will operate between the region from START to END."
   (add-to-list 'org-export-filter-example-block-functions 'my-latex-export-example-blocks)
   ;; (setq org-export-filter-example-block-functions nil)
 
-  (setq org-latex-minted-options '(("breaklines" "true")
-                                   ("breakanywhere" "true")
-								   ("frame" "single")))
   (setq org-latex-caption-above '(table src-block)
         ;; Our hack for using auto ref to generate our nice labels
         ;; org-latex-image-default-scale
@@ -697,19 +627,6 @@ It will operate between the region from START to END."
        [?v ?% ?S ?\] ?l ?% ?l ?l ?l ?v ?h ?% ?h ?x ?h ?h ?% ?a ?\[ ?\] ?\C-b escape ?p ?l ?l ?% ?l ?l ?x ?x]
        0 "%d"))
 
-(use-package org-ql :ensure t
-  :config
-  ;; (completing-read "" (lambda ()))
-  (defun my/org-ql-search ()
-    "`org-ql-search' my personal org files directory."
-    (interactive)
-    (org-ql-search
-      (org-ql-search-directories-files
-       :directories '("~/sources/org")
-       :recurse t)
-      (read-string "Query: " (when org-ql-view-query
-                               (format "%S" org-ql-view-query))))))
-
 (use-package org-roam :ensure t
   :after org
   :init
@@ -746,6 +663,166 @@ It will operate between the region from START to END."
   :bind
   (:map org-mode-map :package org ("C-c b" . #'org-cite-insert)))
 
+(use-package ob-vterm-ob
+  :init
+  (defvar ob-vterm-default-instance 0
+    "Use existing vterm instance when no session parameter specified.")
+  
+  (defun org-babel-vterm-initiate-session (&optional session _params)
+    "Initiate a session named session according to params."
+    (if-let* ((session
+	       (if (and session
+			(not (string= session "none")))
+		   (concat "vterm-" session)
+		 (or ob-vterm-default-instance
+		     (user-error "Specify a session name for ob-vterm"))
+		 (format "%s<%d>" vterm-buffer-name ob-vterm-default-instance)))
+	      (buf (get-buffer session))
+	      (alive (vterm-check-proc buf)))
+	buf
+      (let ((buf (generate-new-buffer session))
+	    (setup (cdr (assq :setup _params))))
+	(save-window-excursion
+	  (with-current-buffer buf
+	    (vterm-mode)
+	    (when-let ((plist
+			(cdr (assoc setup ob-vterm-setup-alist))))
+	      (vterm-send-string
+	       (or (cl-getf plist :cmd)
+		   (user-error "cmd is not defined for %s"
+			       setup)))
+	      (setq-local vterm-use-vterm-prompt-detection-method nil
+			  term-prompt-regexp
+			  (or (cl-getf plist :prompt-regexp)
+			      (user-error "prompt regexp is not defined for %s"
+					  setup))))
+	    buf)))))
+  
+  (defun org-babel-execute:vterm-ob (body params)
+    (let ((session (org-babel-vterm-initiate-session
+		    (cdr (assq :session params))))
+	  (full-body body))
+      (org-babel-vterm-evaluate session full-body params)))
+
+  (defvar ob-vterm-setup-alist
+    '((gdb :cmd "lima\ngdb\n" :prompt-regexp "gef>")
+      (termux :cmd "ssh android\n" :prompt-regexp "")))
+
+  (defun ob-vterm-evaluate-string (cmd &optional results-param)
+    ;; (vterm-send-C-p)
+    ;; (vterm-send-C-n)
+    ;; (vterm-send-C-a)
+    (vterm-reset-cursor-point)
+    (vterm-beginning-of-line)
+    (vterm-send-C-k)
+    (let ((start (point)))
+      (vterm-send-string cmd)
+      (vterm-send-string "\n")
+      (if (string= results-param "none")
+	  ""
+	(while (not (= (point)
+		       (save-excursion
+			 (vterm-next-prompt 1)
+			 (point)))
+		    ;; (save-excursion
+		    ;;   (goto-char start)
+		    ;;   (not (re-search-forward
+		    ;; 	  "ob-vterm-end"
+		    ;; 	  nil t)))
+		    )
+	  (accept-process-output vterm--process vterm-timer-delay))
+	(let* ((end (save-excursion
+		      (vterm-next-prompt 1)
+		      (search-backward "\n" nil t))))
+	  (buffer-substring
+	   (save-excursion
+	     (goto-char start)
+	     (search-forward "\n" nil t))
+	   end)))))
+  
+  (defun org-babel-vterm-evaluate (session body &optional params stdin cmdline)
+    (let* ((capture-all (cdr (assq :capture params)))
+	   (capture-all (member capture-all '("t" "yes")))
+	   (results-param (cdr (assq :results params))))
+      (save-match-data
+	(with-current-buffer session
+	  ;; this will goto and clear prompt
+	  ;; (vterm-send-C-l)
+	  (let ((results
+		 (mapcar (lambda (cmd) (ob-vterm-evaluate-string cmd results-param))
+			 (split-string body "\n"))))
+	    (if capture-all
+		(mapconcat 'identity results "\n")
+	      (car (last results 1))))))))
+  (defalias 'vterm-ob-mode 'sh-mode)
+  (provide 'ob-vterm-ob))
+
+(use-package ob-gdb
+  :init
+  (defun org-babel-gdb-initiate-session (&optional session _params)
+    "initiate a session named session according to params."
+    (when (and session (not (string= session "none")))
+      (save-window-excursion
+	(or (org-babel-comint-buffer-livep (format "*gud-%s*" session))
+	    (progn
+	      ;; (shell session)
+	      (gud-gdb (format "gdb --fullname %s" session))
+	      (let ((process (get-buffer-process (current-buffer))))
+		;; (comint-send-string process "gdb\n")
+		(setq-local comint-prompt-regexp "gef➤  ")
+		(while (save-excursion
+			 (goto-char comint-last-input-end)
+			 (not (re-search-forward
+			       comint-prompt-regexp
+			       nil t)))
+		  (accept-process-output process)))
+	      ;; needed for Emacs 23 since the marker is initially
+	      ;; undefined and the filter functions try to use it without
+	      ;; checking.
+	      (set-marker comint-last-output-start (point))
+	      (get-buffer (current-buffer)))))))
+  
+  (defun org-babel-execute:gdb (body params)
+    (let ((session (org-babel-gdb-initiate-session
+		    (cdr (assq :session params))))
+	  (full-body
+	   (org-babel-expand-body:generic
+	    body params (org-babel-variable-assignments:shell params))))
+      (org-babel-gdb-evaluate session full-body params)))
+  
+  (defun org-babel-gdb-evaluate (session body &optional params stdin cmdline)
+    "Pass BODY to the Shell process in BUFFER.
+If RESULT-TYPE equals `output' then return a list of the outputs
+of the statements in BODY, if RESULT-TYPE equals `value' then
+return the value of the last statement in BODY."
+    (org-babel-comint-in-buffer session
+      (let ((beg comint-last-input-start)
+	    (output-start comint-last-input-end)
+	    (ansi-color-for-comint-mode t) ; disable to preserve color sequence
+	    (comint-prompt-regexp "gef➤  "))
+	(end-of-buffer)			; goto comint prompt
+	(comint-kill-input)		; clear all current input
+	(dolist (line (split-string (org-trim body) "\n"))
+	  (insert line)
+	  (comint-send-input nil t)
+
+	  (while (save-excursion
+		   (goto-char comint-last-input-end)
+		   (not (re-search-forward
+			 comint-prompt-regexp
+			 nil t)))
+	    (accept-process-output
+	     (get-buffer-process (current-buffer)))))
+	(let ((inhibit-read-only t))
+	  (prog1 (buffer-substring-no-properties
+		  ;; delete-and-extract-region
+		  output-start
+		  (1- (marker-position (car comint-last-prompt))))
+	    ;; (ansi-color-apply-on-region
+	    ;;  beg (buffer-end 1))
+	    )))))
+  (provide 'ob-gdb))
+
 ;; (use-package ob-rescript
 ;;   :init
 ;;   (defun org-babel-execute:rescript (body params)
@@ -778,8 +855,7 @@ It will operate between the region from START to END."
               ;; (org-present-hide-cursor)
               (org-present-read-only)
 	      (display-line-numbers-mode -1)
-	      (tab-bar-mode -1)
-	      (evil-emacs-state)))
+	      (tab-bar-mode -1)))
   (add-hook 'org-present-mode-quit-hook
             (defun my/org-present-exit-cleanup ()
               (org-present-small)
@@ -787,8 +863,7 @@ It will operate between the region from START to END."
               (org-present-show-cursor)
               (org-present-read-write)
 	      (tab-bar-mode +1)
-	      (display-line-numbers-mode +1)
-	      (evil-normal-state))))
+	      (display-line-numbers-mode +1))))
 
 (provide 'init-org)
 ;;; init-org.el ends here

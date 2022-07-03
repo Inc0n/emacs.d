@@ -52,12 +52,16 @@
   ;; make a #define be left-aligned
   (setq c-electric-pound-behavior '(alignleft)))
 
+(with-eval-after-load 'cc-mode
+  (define-key c-mode-map [tab] 'indent-for-tab-command))
 ;; don't use c-mode-common-hook or cc-mode-hook because many major-modes use this hook
 (add-hook 'c-mode-common-hook 'my/common-cc-mode-setup)
 (add-hook 'c-mode-hook 'my/c-mode-setup)
 (add-hook 'c++-mode-hook 'my/c-mode-setup)
 
-(use-package zig-mode :defer t :ensure t)
+(use-package zig-mode :defer t :ensure t
+  :config
+  (setq zig-return-to-buffer-after-format t))
 
 (use-package nim-mode
   :defer t
@@ -74,6 +78,28 @@
   :config
   (global-tree-sitter-mode 1)
   (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode))
+
+(use-package tree-sitter-ispell
+  :disabled 
+  (defvar tree-sitter-default-text-grammar '(string comment))
+  (defvar tree-sitter-text-grammar-alist
+    '((js-mode string template_string comment)))
+
+  (defun get-text-node-at-point ()
+    "Get the text node at point, to each major mode grammar."
+    (car					; get first valid match 
+     (seq-some (lambda (type)
+		 (tree-sitter-node-at-point type))
+	       (alist-get major-mode tree-sitter-text-grammar-alist
+			  tree-sitter-default-text-grammar))))
+
+  (defun run-ispell-at-point ()
+    "Run Ispell on text node at point if found."
+    (interactive)
+    (when-let ((node (get-text-node-at-point)))
+      (ispell-region
+       (tsc-node-start-position node)
+       (tsc-node-end-position node)))))
 
 (use-package tree-sitter-langs :ensure t
   :after tree-sitter)
@@ -100,23 +126,6 @@
                 (and (eq (char-charset char-after) 'ascii)
                      (eq (char-syntax char-after) ?w)))))))
 
-(defun my-prog-nuke-trailing-whitespace ()
-  "Only operate in the visible region of the window.
-With exception to the current line."
-  (when (derived-mode-p 'prog-mode)
-    (let ((win-beg (window-start))
-          (win-end (window-end))
-          (line-beg (line-beginning-position))
-          (line-end (line-end-position)))
-      (if (and (not (or (< line-beg win-beg)
-                        (> line-end win-end)))
-               (evil-insert-state-p))
-          (progn (delete-trailing-whitespace win-beg line-beg)
-                 (delete-trailing-whitespace line-end win-end))
-        (delete-trailing-whitespace win-beg win-end)))))
-
-;; (add-hook 'before-save-hook 'my-prog-nuke-trailing-whitespace)
-
 (defun compilation-finish-hide-buffer-on-success (buffer str)
   "Bury BUFFER whose name marches STR.
 This function can be re-used by other major modes after compilation."
@@ -134,7 +143,8 @@ This function can be re-used by other major modes after compilation."
       (message "NO COMPILATION ERRORS!"))))
 
 ;; @see http://xugx2007.blogspot.com.au/2007/06/benjamin-rutts-emacs-c-development-tips.html
-(add-to-list 'compilation-finish-functions 'compilation-finish-hide-buffer-on-success)
+(add-to-list 'compilation-finish-functions
+			 'compilation-finish-hide-buffer-on-success)
 
 (use-package paredit-everywhere :ensure t :defer t)
 
@@ -150,15 +160,13 @@ This function can be re-used by other major modes after compilation."
   "My generic `prog-mode-hook' setup function."
   (company-ispell-setup)
 
-  (setq prettify-symbols-alist
-        `(,@prettify-symbols-alist
-          ("lambda" . ?λ)))
   (prettify-symbols-mode 1)
+  (add-to-list 'prettify-symbols-alist '("lambda" . ?λ))
 
-  (unless (buffer-file-temp-p)
+  (when (not (or (buffer-file-temp-p)
+				 scratch-buffer))
     ;; Selectively enable flycheck-mode
-    (unless scratch-buffer
-      (flycheck-mode 1)))
+    (flycheck-mode 1))
 
   ;; enable for all programming modes
   ;; http://emacsredux.com/blog/2013/04/21/camelcase-aware-editing/
@@ -180,7 +188,7 @@ This function can be re-used by other major modes after compilation."
   (auto-fill-mode 1)
   (font-lock-mode 1)
   (setq-local comment-start "%"
-	      comment-add 0))
+			  comment-add 0))
 
 (use-package rust-mode :defer t :ensure t :mode "\\.rs\\'")
 
@@ -232,8 +240,7 @@ This function can be re-used by other major modes after compilation."
 
 (define-hook-setup 'web-mode-hook
   (unless (buffer-file-temp-p)
-    (setq-local my/flyspell-check-doublon nil)
-    (remove-hook 'yas-after-exit-snippet-hook 'web-mode-yasnippet-exit-hook t)))
+    (setq-local my/flyspell-check-doublon nil)))
 
 (with-eval-after-load 'web-mode
   ;; make org-mode export fail, I use evil and evil-matchit
@@ -510,8 +517,7 @@ using e.g. my/skewer-load-file."
   ;; :interpreter ("python" . python-mode)
   :config
   (add-to-list 'process-coding-system-alist '("python" . (utf-8 . utf-8)))
-  ;; run command `pip install jedi flake9` in shell,
-  ;; or just check https://github.com/jorgenschaefer/elpy
+  ;; use (elpy-config) to configure dependencies
   (elpy-enable)
 
   ;; (setq elpy-shell-command-prefix-key "C-c C-f")
@@ -530,15 +536,16 @@ using e.g. my/skewer-load-file."
   
   ;; http://emacs.stackexchange.com/questions/3322/python-auto-indent-problem/3338#3338
   ;; emacs 24.4+
-  (setq electric-indent-chars (delq ?: electric-indent-chars)))
+  ;; (setq electric-indent-chars (delq ?: electric-indent-chars))
+  )
 
 (defun elsvg-update-svg-buffer-on-save (arg)
   (interactive "P")
   (let ((svg (save-excursion
-	       (beginning-of-buffer)
-	       (forward-sexp)
-	       (backward-sexp)
-	       (eval (sexp-at-point)))))
+			   (beginning-of-buffer)
+			   (forward-sexp)
+			   (backward-sexp)
+			   (eval (sexp-at-point)))))
     (pop-to-buffer (get-buffer-create "*sierpinksi*"))
     (fundamental-mode)
     (erase-buffer)
@@ -553,5 +560,22 @@ using e.g. my/skewer-load-file."
     (add-hook 'after-save-hook 'elsvg-update-svg-buffer-on-save 1 t)
     (elsvg-update-svg-buffer-on-save)))
 
+(use-package verilog-mode
+  :config
+  (setq verilog-indent-lists nil
+		verilog-auto-lineup 'all
+		verilog-tool 'verilog-simulator
+		verilog-simulator "vvp"
+		verilog-compiler "iverilog")
+  (defun verilog-compile-or-simulate (arg)
+	(interactive "P")
+	(let ((verilog-tool
+		   (if (null arg)
+			   'verilog-compiler
+			 (if (equal '(4) arg)
+				 'verilog-simulator
+			   (user-error "Unknown prefix-arg %s" arg)))))
+	  (verilog-set-compile-command))))
+
 (provide 'init-prog-modes)
-;;; init-prog-modes ends here
+;;; init-prog-modes.el ends here

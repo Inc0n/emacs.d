@@ -82,22 +82,20 @@ You still need modify `package-archives' in \"init-elpa.el\" to PERMANENTLY use 
 (defvar my/melpa-include-packages
   '(ace-window               ; lastest stable is released on year 2014
     ace-pinyin
-    auto-package-update
+    
     nov
+    nov-xwidget
     bbdb
     native-complete
     company-native-complete
     js2-mode           ; need new features
     git-timemachine    ; stable version is broken when git rename file
-    undo-fu
+    
     command-log-mode
     ;; lsp-mode ; stable version has performance issue, but unstable version sends too many warnings
     edit-server ; use Emacs to edit textarea in browser, need browser addon
     package-lint                        ; for melpa pull request only
-    auto-yasnippet
     typescript-mode ; the stable version lacks important feature (highlight function names)
-    evil-exchange
-    evil-find-char-pinyin
 
     rjsx-mode                          ; fixed the indent issue in jsx
     julia-mode
@@ -108,7 +106,6 @@ You still need modify `package-archives' in \"init-elpa.el\" to PERMANENTLY use 
     ibuffer-vc
     which-key
 
-    undo-tree
     js-doc
     wgrep
 
@@ -137,6 +134,7 @@ You still need modify `package-archives' in \"init-elpa.el\" to PERMANENTLY use 
     ;; toggle latex fragment
     org-fragtog
     use-package
+    vterm
     maple-minibuffer
     ;; osx
     haxe-mode
@@ -187,8 +185,6 @@ You still need modify `package-archives' in \"init-elpa.el\" to PERMANENTLY use 
 (require-package 'legalese)
 ;; (require-package 'git-gutter) ; use my patched version
 
-(require-package 'auto-package-update)
-
 ;; {{ Fixed expiring GNU ELPA keys
 ;; GNU ELPA GPG key will expire on Sep-2019. So we need install this package to
 ;; update key or else users can't install packages from GNU ELPA.
@@ -198,4 +194,4 @@ You still need modify `package-archives' in \"init-elpa.el\" to PERMANENTLY use 
 ;; }}
 
 (provide 'init-elpa)
-;;; init-elpa ends here
+;;; init-elpa.el ends here

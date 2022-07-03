@@ -2,43 +2,30 @@
 
 ;;; Code:
 
-(require-package 'racket-mode)
 (require-package 'geiser)
 (require-package 'slime)
 (require-package 'gambit)
 
 (setq-default inferior-lisp-program ;; (executable-find "ecl")
-	      "ros -Q run")
-
-;; elisp
-(defun set-up-hippie-expand-for-elisp ()
-  "Set `hippie-expand' completion functions for use with Emacs Lisp."
-  (add-to-list 'hippie-expand-try-functions-list 'try-complete-lisp-symbol t)
-  (add-to-list 'hippie-expand-try-functions-list 'try-complete-lisp-symbol-partially t))
+			  "ros -Q run")
 
 ;; lisp mode setups
 (defun my/lisp-setup ()
   "Enable features useful in any Lisp mode."
-  (setq-local tab-width 8)
   (paredit-mode 1)
   (rainbow-delimiters-mode 1)
   (turn-on-eldoc-mode)
   (checkdoc-minor-mode 1)
   (cl-font-lock-built-in-mode 1)
   (push `("Alias" ,(rx (group "defalias")
-		       (1+ space)
-		       (group (1+ alnum)))
-	  2)
+					   (1+ space)
+					   (group (1+ alnum)))
+		  2)
         imenu-generic-expression))
 
-(use-package smartparens :ensure t
-  :disabled
-  :config (require 'smartparens-config)
-  :init (setq sp-base-key-bindings 'sp))
-;; (customize-set-variable 'sp-base-key-bindins 'sp)
-
 (dolist (hook '(emacs-lisp-mode-hook
-		lisp-mode-hook
+				lisp-mode-hook
+				lisp-data-mode-hook
                 racket-mode-hook
                 ;;
                 inferior-lisp-mode-hook
@@ -52,6 +39,7 @@
   (add-hook hook #'my/lisp-setup))
 
 ;; racket
+(require-package 'racket-mode)
 (with-eval-after-load 'racket-mode
   ;; this would breaks pyim (chinese input)
   ;; (add-hook 'racket-mode-hook      #'racket-unicode-input-method-enable)
@@ -73,8 +61,8 @@
   ;;
 
   (setq slime-lisp-implementations
-	`((sbcl (,(executable-find "sbcl")))
-	  (gerbil-scheme ("gxi" "-:d-") :init gerbil-scheme-start-swank)))
+		`((sbcl (,(executable-find "sbcl")))
+		  (gerbil-scheme ("gxi" "-:d-") :init gerbil-scheme-start-swank)))
   (setq slime-lisp-implementations nil))
 
 ;;; gerbil
@@ -101,7 +89,7 @@
 (with-eval-after-load 'geiser
   ;; (geiser-implementation-extension 'guile "scm")
   (setq-default geiser-implementations-alist
-		'(((regexp "\\.scm\\'") guile))))
+				'(((regexp "\\.scm\\'") guile))))
 
 ;; gerbil tag table
 

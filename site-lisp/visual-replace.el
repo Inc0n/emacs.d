@@ -208,8 +208,8 @@ The hooks are called in order, with one argument, the
 `visual-replace-args' instance to modify.")
 
 (cl-defstruct (visual-replace-args (:constructor visual-replace-make-args)
-				   (:copier visual-replace-copy-args)
-				   (:type vector))
+								   (:copier visual-replace-copy-args)
+								   (:type vector))
   "Query/replace arguments.
 
 This structure collects arguments to pass to `visual-replace'.

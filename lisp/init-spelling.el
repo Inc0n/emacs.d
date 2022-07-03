@@ -5,7 +5,11 @@
 (defvar-local my/flyspell-check-doublon t
   "Check doublon (double word) when calling `flyspell-highlight-incorrect-region'.")
 
+(setq flyspell-use-meta-tab nil)	; disable C-M-i or M-\t
 (with-eval-after-load 'flyspell
+  ;; uncomment to disable 'flyspell-correct-word
+  ;; (define-key flyspell-mouse-map [mouse-2] nil)
+
   ;; Cursor and background gets mixed up
   ;; (set-face-attribute 'flyspell-incorrect nil :background nil)
 
@@ -22,12 +26,12 @@
 ;; @see http://lists.gnu.org/archive/html/aspell-announce/2011-09/msg00000.html
 (with-eval-after-load 'ispell
   (setq ispell-program-name (-find 'executable-find '("aspell" "hunspell"))
-	    ispell-extra-args
+	ispell-extra-args
         '("--sug-mode=ultra" "--lang=en_UK" "--camel-case"
           ;; @see https://github.com/redguardtoo/emacs.d/issues/796
           ;; "--run-together" "--run-together-limit=16"
           )
-	    ispell-silently-savep t))
+	ispell-silently-savep t))
 
 (add-hook 'prog-mode-hook 'flyspell-prog-mode)
 (add-hook 'text-mode-hook 'flyspell-prog-mode)

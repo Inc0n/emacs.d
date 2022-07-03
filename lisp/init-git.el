@@ -33,62 +33,6 @@
 ;;   (add-hook hook #'my-setup-develop-environment))
 ;; ;; }}
 
-;; {{ git-gutter
-;; (local-require 'git-gutter)
-
-(defun git-gutter-reset-to-head-parent()
-  "Reset gutter to HEAD^.  Support Subversion and Git."
-  (interactive)
-  (let* ((filename (buffer-file-name))
-         (cmd (concat "git --no-pager log --oneline -n1 --pretty=\"format:%H\" "
-                      filename))
-         (parent (cond
-                  ((eq git-gutter:vcs-type 'svn)
-                   "PREV")
-                  (filename
-                   (concat (shell-command-to-string cmd) "^"))
-                  (t
-                   "HEAD^"))))
-    (git-gutter:set-start-revision parent)
-    (message "git-gutter:set-start-revision HEAD^")))
-
-(defun git-gutter-reset-to-default ()
-  "Restore git gutter to its original status.
-Show the diff between current working code and git head."
-  (interactive)
-  (git-gutter:set-start-revision nil)
-  (message "git-gutter reset"))
-
-(autoload 'global-git-gutter-mode "git-gutter")
-;; (add-hook 'after-init-hook 'global-git-gutter-mode)
-
-(with-eval-after-load 'git-gutter
-  (setq git-gutter:update-interval 2)
-  ;; nobody use bzr
-  ;; I could be forced to use subversion or hg which has higher priority
-  ;; Please note my $HOME directory is under git control
-  (setq git-gutter:handled-backends '(svn hg git))
-  (setq git-gutter:disabled-modes
-        '(asm-mode
-          org-mode
-          outline-mode
-          markdown-mode
-          image-mode))
-
-  (unless (fboundp 'global-display-line-numbers-mode)
-    ;; git-gutter's workaround for linum-mode bug.
-    ;; should not be used in `display-line-number-mode'
-    (git-gutter:linum-setup))
-
-  (global-set-key (kbd "C-x C-g") 'git-gutter-mode)
-  (global-set-key (kbd "C-x v =") 'git-gutter:popup-hunk)
-  ;; Stage current hunk
-  (global-set-key (kbd "C-x v s") 'git-gutter:stage-hunk)
-  ;; Revert current hunk
-  (global-set-key (kbd "C-x v r") 'git-gutter:revert-hunk))
-
-;; }}
-
 (defun my/git-commit-id ()
   "Select commit id from current branch."
   (let* ((git-cmd "git --no-pager log --date=short --pretty=format:'%h|%ad|%s|%an'")
@@ -104,31 +48,9 @@ Show the diff between current working code and git head."
 (defun my/git-show-commit ()
   "Show commit using ffip."
   (interactive)
-  (let ((ffip-diff-backends '(("Show git commit" . my/git-show-commit-internal))))
+  (let ((ffip-diff-backends
+		 '(("Show git commit" . my/git-show-commit-internal))))
     (ffip-show-diff 0)))
-
-;; {{ git-timemachine
-(defun my/git-timemachine-show-selected-revision ()
-  "Show last (current) revision of file."
-  (interactive)
-  (let* ((collection (mapcar (lambda (rev)
-                    ;; re-shape list for the ivy-read
-                    (cons (concat (substring-no-properties (nth 0 rev) 0 7) "|" (nth 5 rev) "|" (nth 6 rev)) rev))
-                  (git-timemachine--revisions))))
-    (ivy-read "commits:"
-              collection
-              :action (lambda (rev)
-                        ;; compatible with ivy 8+ and later ivy version
-                        (unless (string-match-p "^[a-z0-9]*$" (car rev))
-                          (setq rev (cdr rev)))
-                        (git-timemachine-show-revision rev)))))
-
-(defun my/git-timemachine ()
-  "Open git snapshot with the selected version."
-  (interactive)
-  (util/ensure 'git-timemachine)
-  (git-timemachine--start #'my/git-timemachine-show-selected-revision))
-;; }}
 
 (defun git-get-current-file-relative-path ()
   "Get relative path of current file for Git."
@@ -140,7 +62,7 @@ Show the diff between current working code and git head."
   "Git checkout current file."
   (interactive)
   (when (and (buffer-file-name)
-             (yes-or-no-p (format "git checkout %s?"
+             (yes-or-no-p (format "Git checkout %s? "
                                   (file-name-nondirectory (buffer-file-name)))))
     (let ((filename (git-get-current-file-relative-path)))
       (shell-command (concat "git checkout " filename))
@@ -174,45 +96,21 @@ Show the diff between current working code and git head."
           (message "DONE! git add %s" filename)
         (message "Failed! %s in a git repo?" filename)))))
 
-;; {{ goto next/previous hunk
-(defun my/goto-next-hunk (arg)
-  "Goto next hunk."
-  (interactive "p")
-  (if (memq major-mode '(diff-mode))
-      (diff-hunk-next)
-    (forward-line)
-    ;; (if (re-search-forward "\\(^<<<<<<<\\|^=======\\|^>>>>>>>\\)" (point-max) t)
-    ;;     (goto-char (line-beginning-position))
-    ;;   (forward-line -1))
-    (git-gutter:next-hunk arg)))
-
-(defun my/goto-previous-hunk (arg)
-  "Goto previous hunk."
-  (interactive "p")
-  (if (memq major-mode '(diff-mode))
-      (diff-hunk-prev)
-    (forward-line -1)
-    (if (re-search-backward "\\(^>>>>>>>\\|^=======\\|^<<<<<<<\\)" (point-min) t)
-        (goto-char (line-beginning-position))
-      (forward-line -1)
-      (git-gutter:previous-hunk arg))))
-;; }}
-
 ;; {{
 (defun my/git-extract-based (target lines)
   "Extract based version from TARGET from LINES."
   (cl-loop with regexp-target = (regexp-quote target)
-		   for i from 0
-		   for line in lines
-		   until (string-match regexp-target line)
-		   finally return
-		   ;; find child of target commit
-		   (and (< 0 i)
-				(< i (length lines))
-				(replace-regexp-in-string "^tag: +"
-										  ""
-										  (car (split-string (nth (1- i) lines)
-															 " +"))))))
+	   for i from 0
+	   for line in lines
+	   until (string-match regexp-target line)
+	   finally return
+	   ;; find child of target commit
+	   (and (< 0 i)
+		(< i (length lines))
+		(replace-regexp-in-string "^tag: +"
+					  ""
+					  (car (split-string (nth (1- i) lines)
+							     " +"))))))
 
 (defun my/git-rebase-interactive (&optional user-select-branch)
   "Rebase interactively on the closest branch or tag in git log output.
@@ -223,19 +121,19 @@ If USER-SELECT-BRANCH is not nil, rebase on the tag or branch selected by user."
          (targets (mapcan (lambda (e)
                             (and (string-match "^[a-z0-9]+ (\\([^()]+\\)) " e)
                                  (not (string-match "^[a-z0-9]+ (HEAD " e))
-								 (list (match-string 1 e))))
+				 (list (match-string 1 e))))
                           lines))
          (based (cond
-				 ((or (not targets) (eq (length targets) 0))
-				  (message "No tag or branch is found to base on."))
-				 ((or (null user-select-branch)) (eq (length targets) 1)
-				  ;; select the closest/only tag or branch
-				  (my/git-extract-based (nth 0 targets) lines))
-				 (t
-				  ;; select the one tag or branch
-				  (my/git-extract-based (completing-read "Select based: " targets)
-										   lines)))))
-	;; start git rebase
+		 ((or (not targets) (eq (length targets) 0))
+		  (message "No tag or branch is found to base on."))
+		 ((or (null user-select-branch)) (eq (length targets) 1)
+		  ;; select the closest/only tag or branch
+		  (my/git-extract-based (nth 0 targets) lines))
+		 (t
+		  ;; select the one tag or branch
+		  (my/git-extract-based (completing-read "Select based: " targets)
+					lines)))))
+    ;; start git rebase
     (when based
       (magit-rebase-interactive based nil))))
 ;; }}
@@ -257,40 +155,37 @@ If USER-SELECT-BRANCH is not nil, rebase on the tag or branch selected by user."
                              (line-beginning-position)
                              (line-end-position)))))
           (when (> (length tmp-line) max-line-length)
-			(setq target-linenum linenum-start)
-			(setq target-line tmp-line)
-			(setq max-line-length (length tmp-line)))
+	    (setq target-linenum linenum-start)
+	    (setq target-line tmp-line)
+	    (setq max-line-length (length tmp-line)))
 
           (setq linenum-start (1+ linenum-start)))))
     ;; build (key . linenum-start)
     (cons (format "%s %d: %s"
                   (if (eq 'deleted (aref gutter 1))
-					  "-"
-					"+")
+		      "-"
+		    "+")
                   target-linenum
-				  target-line)
+		  target-line)
           target-linenum)))
 
 (defun my/goto-git-gutter ()
   (interactive)
   (if git-gutter:diffinfos
       (let* ((cands (mapcar #'my/reshape-git-gutter
-							git-gutter:diffinfos))
+			    git-gutter:diffinfos))
              (e (completing-read "git-gutters:" cands))
              (e (cdr (assoc e cands))))
-		;; (unless (numberp e) (setq e (cdr e)))
-		(goto-line e))
+	;; (unless (numberp e) (setq e (cdr e)))
+	(goto-line e))
     (message "NO git-gutters!")))
-
 ;; }}
 
 (defun my/git-files-in-rev-command (rev level)
   "Return git command line to show files in REV and LEVEL."
-  (unless level
-    (setq level 0))
   (concat "git diff-tree --no-commit-id --name-only -r "
           rev
-          (make-string level ?^)))
+          (make-string (or level 0) ?^)))
 
 (defun my/git-root-dir ()
   "Git root directory."
@@ -301,7 +196,6 @@ If USER-SELECT-BRANCH is not nil, rebase on the tag or branch selected by user."
   "Find file in previous commit with ARG.
 If ARG is 1, find file in previous commit."
   (interactive "P")
-  (util/ensure 'magit)
   (let* ((rev (concat "HEAD" (and (eq arg 1) "^")))
          (prompt (format "Find file from commit %s" rev))
          (cmd (my/git-files-in-rev-command rev arg))
@@ -323,18 +217,19 @@ If only one line is selected, use current selection as function name to look up.
 If nothing is selected, use the word under cursor as function name to look up."
   (interactive)
   (when buffer-file-name
-    (let* ((range-or-func (if (region-active-p)
-                              (if (util/in-one-line-p (region-beginning) (region-end))
-								  (format ":%s" (util/selected-str))
-								(format "%s,%s"
-										(line-number-at-pos (region-beginning))
-										(line-number-at-pos (1- (region-end)))))
-							(format ":%s" (thing-at-point 'symbol))))
+    (let* ((range-or-func
+			(if (region-active-p)
+                (if (util/in-one-line-p (region-beginning) (region-end))
+					(format ":%s" (util/selected-str))
+				  (format "%s,%s"
+						  (line-number-at-pos (region-beginning))
+						  (line-number-at-pos (1- (region-end)))))
+			  (format ":%s" (thing-at-point 'symbol))))
            (cmd (format "git log -L%s:%s"
 						range-or-func
 						(file-truename buffer-file-name)))
-           (content (shell-command-to-string cmd)))
-      (when (string-match-p "no match" content)
+           (result (shell-command-to-string cmd)))
+      (when (string-match-p "no match" result)
         ;; mark current function and try again
         (mark-defun)
         (setq range-or-func (format "%s,%s"
@@ -346,4 +241,4 @@ If nothing is selected, use the word under cursor as function name to look up."
       (ffip-show-content-in-diff-mode (shell-command-to-string cmd)))))
 
 (provide 'init-git)
-;;; init-git ends here
+;;; init-git.el ends here

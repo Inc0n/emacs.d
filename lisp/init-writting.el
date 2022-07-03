@@ -57,7 +57,7 @@ ARG is passed in."
         writeroom-extra-line-spacing nil
         writeroom-mode-line t))
 
-(defun readroom-mode ()
+(defun readroom-mode (&optional arg)
   (interactive)
   (let ((writeroom-width 0.5)
 	(writeroom-extra-line-spacing 5))

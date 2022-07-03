@@ -7,41 +7,21 @@
 
 ;;; Code:
 
-(require-package 'visual-regexp) ;; Press "M-x vr-*"
-
-(defmacro my/evil-define-key (&rest body)
-  (declare (indent defun))
-  `(with-eval-after-load 'evil
-     (evil-define-key ,@body)))
-
-(with-eval-after-load 'visual-regexp
-  (setq vr/match-separator-custom-face nil
-	vr/match-separator-string nil))
-
-(defun visual-replace-regexp-text-at-point (text)
+(defun visual-replace-regexp-text-at-point (text &optional regexp)
   (interactive (list (util/thing-at-point/deselect)))
   (require 'visual-replace)
-  (when (or (null text)
-	    (string-empty-p text))
-    (user-error "Empty text to replace"))
+  (when isearch-mode
+    ;; @see
+    ;; https://github.com/szermatt/visual-replace/issues/2#issuecomment-1160217255
+    (user-error "Cannot use this whilst `isearch-mode' is active"))
   (pcase-let* ((vr-args
-		(visual-replace-make-args
-		 :from text
-		 :query t
-		 ;; :regexp t
-		 :word nil))
-	       (`(,args ,ranges) (visual-replace-read vr-args)))
-    (visual-replace args ranges))
-
-  ;; (when (bounds-of-thing-at-point 'symbol)
-  ;;   (goto-char (car (bounds-of-thing-at-point 'symbol))))
-  ;; (goto-char (point))
-  ;; (let ((inhibit-quit t)
-  ;;	   (isearch-string regexp-string))
-  ;;   (with-local-quit
-  ;;	 (call-interactively 'isearch-query-replace))
-  ;;   (lazy-highlight-cleanup 'force))
-  )
+				(visual-replace-make-args
+				 :from text
+				 :query t
+				 :regexp regexp
+				 :word nil))
+			   (`(,args ,ranges) (visual-replace-read vr-args)))
+    (visual-replace args ranges)))
 
 (defun paredit-spliced-raise ()
   (interactive)
@@ -54,66 +34,40 @@
 
 ;; (popup-tip (documentation 'paredit-copy-as-kill))
 
-(defun handle-sexp (paredit-fn normal-fn arg)
-  "PAREDIT-FN NORMAL-FN ARG."
-  (if (and (null arg)
-	   (not (region-active-p))
-	   ;; if point is before the end of sexp
-	   (-some--> (bounds-of-thing-at-point 'sexp)
-	     (< (point) (cdr it))))
-      (funcall paredit-fn)
-    (call-interactively normal-fn)))
+(defun handle-sexp (fn arg)
+  "FN ARG."
+  (when (and (null arg)
+			 (not (region-active-p))
+			 ;; if point is before the end of sexp
+			 (-some--> (bounds-of-thing-at-point 'sexp)
+			   (< (point) (cdr it))))
+    (mark-sexp))
+  (call-interactively fn))
 
 ;; DONE <2021-08-20 FRI>: mark region if char syntax is ?\)
 ;; small change allow operation to operate on ?\) instead of marking region
 
-(defun sexp-or-normal (sexp-fn normal-fn)
+(defun sexp-and-normal (normal-fn)
   "Check `handle-sexp' for details of SEXP-FN and NORMAL-FN."
   (if (and (functionp normal-fn)
-	   (commandp normal-fn)
-	   (functionp sexp-fn))
+		   (commandp normal-fn))
       (lambda (&optional arg)
-	(interactive "P")
-	(handle-sexp sexp-fn normal-fn arg))
+		(interactive "P")
+		(handle-sexp normal-fn arg))
     ;; use warning over error to prevent stopping loading config files
     (warn "Normal-fn is not an interactive function, %s" normal-fn)))
-
-(defun sexp-and-normal (sexp-fn normal-fn)
-  "Check `handle-sexp' for details of SEXP-FN and NORMAL-FN.
-The two functions are applied in sequence."
-  (sexp-or-normal
-   (lambda ()
-     (funcall sexp-fn)
-     (call-interactively normal-fn))
-   normal-fn))
-
-(defun my/remind (keybind func-name)
-  "Remind to use KEYBIND to invoke this FUNC-NAME."
-  (unless (key-binding keybind)
-    (warn "keybind %s -> %s does not exist in global map" keybind func-name))
-  (lambda ()
-    (interactive)
-    ;; TODO: maybe call func-name as well
-    (message "use %s to invoke %s"
-	     (propertize (key-description keybind) 'face 'help-key-binding)
-	     func-name)))
 
 (local-require 'paredit 'force)
 (with-eval-after-load 'paredit
   (define-keys paredit-mode-map
-    [?\C-\M-w] (sexp-and-normal #'mark-sexp  #'kill-ring-save)
-    [C-m ?g ?r] (sexp-and-normal #'mark-sexp #'copy-and-paste)
-    (kbd "C-M-;") (sexp-and-normal #'mark-sexp #'comment-or-uncomment-dwim))
-  (my/evil-define-key '(normal visual) paredit-mode-map
-    "y" (sexp-and-normal #'mark-sexp  #'evil-yank)
-    "gr" (sexp-and-normal #'mark-sexp #'copy-and-paste)
-    "gy" (sexp-and-normal #'mark-sexp #'comment-and-copy-line)
-    "gc" (sexp-and-normal #'mark-sexp #'comment-or-uncomment-dwim)))
+    [?\C-\M-w] (sexp-and-normal #'kill-ring-save)
+    [C-m ?g ?r] (sexp-and-normal #'copy-and-paste)
+    (kbd "C-M-;") (sexp-and-normal #'comment-or-uncomment-dwim)))
 
 (local-require 'wrap-region)
 (with-eval-after-load 'wrap-region
   (let ((js-mode '((?j . ("JSON.stringify(" . ")"))
-		   (?> . ("(e) => " . "(e)")))))
+				   (?> . ("(e) => " . "(e)")))))
     (add-to-list 'wrap-region-mode-pairs (cons 'js-mode js-mode))
     (add-to-list 'wrap-region-mode-pairs (cons 'js-mode2 js-mode)))
   (add-to-list 'wrap-region-mode-pairs '(sh-mode (?$ . ("$(" . ")")))))
@@ -133,8 +87,6 @@ The two functions are applied in sequence."
 (defvar leader-keymap (make-sparse-keymap))
 
 (global-set-key [C-m] leader-keymap)
-(with-eval-after-load 'evil
-  (evil-define-key '(normal motion visual) 'global (kbd "SPC") leader-keymap))
 
 (define-keys leader-keymap
   "ac" #'aya-create
@@ -146,13 +98,13 @@ The two functions are applied in sequence."
   "cam" #'org-tags-view	       ; `C-c a m': search items in org-file-apps by tag
   "ci" #'org-clock-in	       ; `C-c C-x C-i'
   "co" #'org-clock-out	       ; `C-c C-x C-o'
-  "cr" #'org-clock-report       ; `C-c C-x C-r'
-  "cf" (lambda () (interactive)
-	 (kill-new buffer-file-name) (message buffer-file-name))
+  "cr" #'org-clock-report	   ; `C-c C-x C-r'
+  "cf" (lambda () (interactive)	   ; copy buffer name
+		 (kill-new buffer-file-name) (message buffer-file-name))
 
   "di" #'dictionary-lookup
-  "dd" #'sdcv-search-input		; details
-  "dt" #'sdcv-search-input+		; summary
+  "dd" #'sdcv-search-input				; details
+  "dt" #'sdcv-search-input+				; summary
   "dm" #'lookup-doc-in-man
   ;;
   "da" #'diff-region-tag-selected-as-a
@@ -164,23 +116,14 @@ The two functions are applied in sequence."
   "eb" #'eval-buffer
 
   "fp" #'find-file-in-project-at-point
-  "fc" #'find-file-with-similar-name	; ffip v5.3.1
-  "fi" #'selectsel-ffip			; 'find-file-in-project
-  "fd" #'find-directory-in-project-by-selected
   "fm" #'dired-jump ;; open the dired File Manager from current file
-  "fa" #'flyspell-auto-correct-word
   "fb" #'flyspell-buffer
   "fc" #'flyspell-correct-word-before-point
-  "fs" #'flyspell-goto-next-error
-  "fe" #'flycheck-next-error
 
+  "gf" #'consult-find
   "gs" #'consult-recent-file
-  "gf" #'find-file-at-point
-  "gj" #'avy-goto-line-below
-  "gk" #'avy-goto-line-above
-  "gb" #'consult-buffer
-  "g," #'goto-last-change
   "gr" #'copy-and-paste
+  "g," #'goto-last-change
 
   "ih" #'my/goto-git-gutter
   "ii" #'consult-imenu
@@ -188,21 +131,19 @@ The two functions are applied in sequence."
   "ip" #'my/insert-path
   "im" #'consult-mark
 
-  "kr" #'apply-macro-to-region-lines
+  "j" #'avy-goto-line-below
+  "k" #'avy-goto-line-above
 
   "lo" (lambda () (interactive) (occur-symbol-at-mouse nil))
-  "ll" #'isearch-repeat-forward
   "lq" #'visual-replace-regexp-text-at-point
-  "ld" #'isearch-within-defun
 
+  "mr" #'apply-macro-to-region-lines
   "mp" 'pop-to-mark-command ;; 'avy-pop-mark
   "mm" (lambda ()
-	 (interactive)
-	 (push-mark-command t)
-	 (deactivate-mark))
-
+		 (interactive)
+		 (push-mark-command t)
+		 (deactivate-mark))
   "nw" #'narrow-or-widen-dim
-  "nh" #'my/goto-next-hunk
 
   "op" #'compile
   "oa" (lambda (arg) (interactive "P") (org-agenda arg "n"))
@@ -210,20 +151,20 @@ The two functions are applied in sequence."
   "og" #'org-agenda
 
   "pw" #'pwd
-  "ph" #'my/goto-previous-hunk
   "pp" #'clipboard-yank
 
+  "q" #'quit-window
+  
   "sr" #'scratch
   "ss" #'completing-ripgrep
   "sg" #'consult-git-grep
 
   "tr" #'run-temp-lambda
   "ts" #'save-temp-lambda
-  "tp" #'toggle-pinyin-in-completing-read
   "tt" #'my/toggle-day/night
 
-  "vv" #'vc-msg-show
-
+  "xb" #'switch-to-buffer
+  "xf" #'find-file-at-point
   "xw" #'kill-buffer-and-window
   ;;
   "uu" #'winner-undo
@@ -240,6 +181,7 @@ The two functions are applied in sequence."
   (define-key emacs-lisp-mode-map (kbd "C-c C-u") #'my/unbound-symbol))
 
 (define-keys global-map
+  [?\C-x ?b] #'consult-project-buffer
   [?\C-h ?d] #'describe-function	; apropos-documentation
   [?\C-h ?f] #'find-function		; describe-function
   [?\C-h ?V] #'find-variable
@@ -250,30 +192,33 @@ The two functions are applied in sequence."
   [?\M-p] #'move-line-up
   
   (kbd "C-x C-i") #'eval-print-last-sexp
+  [?\C-x ?\C-b] #'ibuffer
   
   [?\M-\[] #'wrap-region-activate
-
+  
   [?\C-s] #'my/isearch-at-point-maybe
-  ;; [?\C-s] #'completing-swiper
-  [?\C-\\] #'evil-toggle-input-method
   ;; org mode
   [?\C-c ?o ?c] #'org-capture)
 
+(with-eval-after-load 'mac-win
+  ;; emacs-mac port introduce some unnecessary binds disable them
+  (define-keys global-map
+    [mouse-2] 'ignore
+    [swipe-right] 'ignore
+    [swipe-left] 'ignore))
+
 ;; Emacs editing binds
 (define-keys global-map
-  ;; [?\C-q] 'aya-open-line
+  [?\C-\M-s] #'isearch-forward-regexp
   [?\C-\S-u] #'join-line
   ;; join line from below
-  [?\C-\S-j] [?\C-n ?\C-\S-u]
-  ;; [?\C-\S-s] #'isearch-backward
-  [?\C-\M-s] #'isearch-repeat-forward
-  [?\C-\M--] #'undo-redo
+  [?\C-\S-j] [?\C-e ?\C-n ?\C-\S-u]
   [?\C-\M-\'] #'vundo
 
   [s-backspace] (lambda (arg)
-		  "Kill ARG lines backward."
-		  (interactive "p")
-		  (kill-line (- 1 arg)))
+				  "Kill ARG lines backward."
+				  (interactive "p")
+				  (kill-line (- 1 arg)))
   [C-backspace] #'backward-delete-word
   [C-M-backspace] #'backward-kill-sexp
   
@@ -281,13 +226,13 @@ The two functions are applied in sequence."
   ;; Navigate window layouts with "C-c <left>" and "C-c <right>"
   ;; prompt for buffer to switch after window split
   [?\C-x ?2] (lambda () (interactive)
-	       (split-window-vertically)
-	       (other-window 1)
-	       (consult-buffer))
+			   (split-window-vertically)
+			   (other-window 1)
+			   (consult-buffer))
   [?\C-x ?3] (lambda () (interactive)
-	       (split-window-horizontally)
-	       (other-window 1)
-	       (consult-buffer))
+			   (split-window-horizontally)
+			   (other-window 1)
+			   (consult-buffer))
   [?\C-c ?.] #'my/insert-date
   
   ;; tab bar
@@ -295,10 +240,9 @@ The two functions are applied in sequence."
   [?\s-t] #'tab-bar-new-tab
 
   [?\s-w] (lambda () (interactive)
-	    (if (bound-and-true-p tab-bar-mode)
-		(call-interactively 'tab-bar-close-tab)
-	      (call-interactively 'delete-frame)))
-
+			(if (bound-and-true-p tab-bar-mode)
+				(call-interactively 'tab-bar-close-tab)
+			  (call-interactively 'delete-frame)))
   [C-tab] #'tab-next
   [C-S-tab] #'tab-previous)
 
@@ -309,12 +253,12 @@ The two functions are applied in sequence."
     [?\C-\M-n] 'org-next-visible-heading
     [?\C-\M-p] 'org-previous-visible-heading
     [?\C-\M-d] 'org-forward-heading-same-level
-    
-    [?\C-\M-\S-n] 'org-move-subtree-down
-    [?\C-\M-\S-p] 'org-move-subtree-up
 
-    [?\C->] 'org-shiftmetaright		  ; org-do-demote
-    [?\C-<] 'org-shiftmetaleft		  ; org-do-promote
+    [?\M-N] 'org-move-subtree-down
+    [?\M-P] 'org-move-subtree-up
+
+    [?\C->] 'org-shiftmetaright		; org-do-demote
+    [?\C-<] 'org-shiftmetaleft		; org-do-promote
     [?\M-+] 'org-latex-pdf-count-words
 
     [?\C-c ?o ?a] 'org-archive-subtree
@@ -322,4 +266,4 @@ The two functions are applied in sequence."
     [C-m ?o ?e] 'org-babel-execute-subtree))
 
 (provide 'init-bindings)
-;;; init-bindings ends here
+;;; init-bindings.el ends here

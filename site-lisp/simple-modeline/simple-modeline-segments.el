@@ -75,14 +75,14 @@
 (defun simple-modeline-segment-evil-modal ()
   "Displays a color-coded evil state modal indicator in the mode-line."
   (let ((state (if (bound-and-true-p viper-mode)
-		   (intern
-		    (string-trim-right (symbol-name viper-current-state)
-				       "-state"))
-		 (if (bound-and-true-p evil-mode)
-		     evil-state
-		   (if (bound-and-true-p meow-global-mode)
-		       meow--current-state
-		     "E")))))
+				   (intern
+					(string-trim-right (symbol-name viper-current-state)
+									   "-state"))
+				 (if (bound-and-true-p evil-mode)
+					 evil-state
+				   (if (bound-and-true-p meow-global-mode)
+					   meow--current-state
+					 "E")))))
     (propertize
      (or (simple-modeline-to-text state) ; (evil-state-property state :tag)
          (symbol-name state))
@@ -176,9 +176,10 @@
 
 (defun simple-modeline-segment-misc-info ()
   "Displays the current value of `mode-line-misc-info' in the mode-line."
-  (let ((misc-info (string-trim (format-mode-line mode-line-misc-info 'simple-modeline-unimportant))))
+  (let ((misc-info 
+		 (format-mode-line mode-line-misc-info 'simple-modeline-unimportant)))
     (unless (string= misc-info "")
-      (concat " " misc-info))))
+      (concat " " (string-trim misc-info)))))
 
 (defun simple-modeline-segment-input-method ()
   "Displays the input-method of the buffer in the mode-line."

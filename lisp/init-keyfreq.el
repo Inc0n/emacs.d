@@ -244,9 +244,7 @@
         yas-expand
         yas-next-field-or-maybe-expand
         ;; mine
-        undo-fu-only-undo
-        evil-digit-argument-or-evil-beginning-of-line
-        undo-fu-only-redo))
+	))
   ;; (util/make-file keyfreq-file "()")
   )
 

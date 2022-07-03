@@ -297,7 +297,7 @@ as deep as `selectrum--search-file-max-depth'"
   "Find a file in project."
   (interactive)
   (let* ((collection (selectsel--dir-tree-list (selectsel--ffip-project-root)))
-	 (cand (completing-read "Search files:" collection)))
+		 (cand (completing-read "Search files:" collection)))
     (when cand
       (find-file cand))))
 
