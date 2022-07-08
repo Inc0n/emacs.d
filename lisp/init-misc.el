@@ -53,7 +53,6 @@
  ediff-window-setup-function #'ediff-setup-windows-plain
  ;; grep-highlight-matches t
  ;; grep-scroll-output t
- set-mark-command-repeat-pop t
  tooltip-delay 0.7
  ;; void problems with crontabs, etc.
  ;; require-final-newline t ; bad idea, could accidentally edit others' code

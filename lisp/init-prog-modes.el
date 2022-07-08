@@ -61,7 +61,8 @@
 
 (use-package zig-mode :defer t :ensure t
   :config
-  (setq zig-return-to-buffer-after-format t))
+  (setq zig-return-to-buffer-after-format t
+		zig-format-on-save nil))
 
 (use-package nim-mode
   :defer t
@@ -158,8 +159,6 @@ This function can be re-used by other major modes after compilation."
 
 (defun generic-prog-mode-hook-setup ()
   "My generic `prog-mode-hook' setup function."
-  (company-ispell-setup)
-
   (prettify-symbols-mode 1)
   (add-to-list 'prettify-symbols-alist '("lambda" . ?λ))
 
@@ -172,14 +171,16 @@ This function can be re-used by other major modes after compilation."
   ;; http://emacsredux.com/blog/2013/04/21/camelcase-aware-editing/
 
   ;; (setq show-trailing-whitespace nil)
-  (electric-pair-mode 1)	  ; auto insert pairing delimiter
-  ;; (hs-minor-mode 1)      ; code/comment fold
-  ;; (turn-on-auto-fill)    ; auto indent
-  ;; eldoc, show API doc in minibuffer echo area
+  (electric-pair-mode 1)		  ; auto insert pairing delimiter
+  ;; (hs-minor-mode 1)				  ; code/comment fold
+  ;; (turn-on-auto-fill)			  ; auto indent
+  ;; show doc in minibuffer area
   (turn-on-eldoc-mode))
 
 ;; some major-modes do NOT inherited from prog-mode
 (add-hook 'prog-mode-hook #'generic-prog-mode-hook-setup)
+(with-eval-after-load 'prog-mode
+  (define-key prog-mode-map [?\M-o] 'avy-goto-line))
 
 (add-auto-mode 'octave-maybe-mode "\\.m$")
 (define-hook-setup 'octave-mode-hook

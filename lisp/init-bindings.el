@@ -7,6 +7,31 @@
 
 ;;; Code:
 
+;; How to move forward and backward in Emacs `mark-ring'
+;; https://stackoverflow.com/a/14539202
+(setq mark-ring nil)
+;; pop-to-mark-command
+(defun unpop-to-mark-command ()
+  "Unpop off mark ring.  Does nothing if mark ring is empty."
+  (interactive)
+  (when mark-ring
+    (let ((last (copy-marker (car (last mark-ring)))))
+	  (push last mark-ring)
+      ;; (unless (mark t) (ding))
+      (setq mark-ring (nbutlast mark-ring))
+      (goto-char (marker-position last)))))
+
+(defun my/remind (keybind func-name)
+  "Remind to use KEYBIND to invoke this FUNC-NAME."
+  (unless (key-binding keybind)
+    (warn "keybind %s -> %s does not exist in global map" keybind func-name))
+  (lambda ()
+    (interactive)
+    ;; TODO: maybe call func-name as well
+    (message "use %s to invoke %s"
+			 (propertize (key-description keybind) 'face 'help-key-binding)
+			 func-name)))
+
 (defun visual-replace-regexp-text-at-point (text &optional regexp)
   (interactive (list (util/thing-at-point/deselect)))
   (require 'visual-replace)
@@ -89,10 +114,11 @@
 (global-set-key [C-m] leader-keymap)
 
 (define-keys leader-keymap
+  "aa" #'avy-goto-char-timer
   "ac" #'aya-create
   "ar" #'align-regexp
   "aw" #'avy-goto-word-or-subword-1
-  "aa" #'avy-goto-char-timer
+  "am" #'apply-macro-to-region-lines
 
   "cc" #'clipboard-kill-ring-save
   "cam" #'org-tags-view	       ; `C-c a m': search items in org-file-apps by tag
@@ -137,9 +163,7 @@
   "lo" (lambda () (interactive) (occur-symbol-at-mouse nil))
   "lq" #'visual-replace-regexp-text-at-point
 
-  "mr" #'apply-macro-to-region-lines
-  "mp" 'pop-to-mark-command ;; 'avy-pop-mark
-  "mm" (lambda ()
+  "m" (lambda ()
 		 (interactive)
 		 (push-mark-command t)
 		 (deactivate-mark))
@@ -182,10 +206,10 @@
 
 (define-keys global-map
   [?\C-x ?b] #'consult-project-buffer
-  [?\C-h ?d] #'describe-function	; apropos-documentation
-  [?\C-h ?f] #'find-function		; describe-function
+  [?\C-h ?d] #'describe-function		; apropos-documentation
+  [?\C-h ?f] #'find-function			; describe-function
   [?\C-h ?V] #'find-variable
-  [?\C-h ?K] #'find-function-on-key	; Info-goto-emacs-key-command-node
+  [?\C-h ?K] #'find-function-on-key		; Info-goto-emacs-key-command-node
   [?\C-h ?M] #'describe-keymap
 
   [?\M-n] #'move-line-down
@@ -193,6 +217,9 @@
   
   (kbd "C-x C-i") #'eval-print-last-sexp
   [?\C-x ?\C-b] #'ibuffer
+
+  [?\C-\M-_] #'unpop-to-mark-command
+  [?\C-_] 'pop-to-mark-command
   
   [?\M-\[] #'wrap-region-activate
   

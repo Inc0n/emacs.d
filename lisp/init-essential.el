@@ -75,7 +75,12 @@ widen content."
    (setq mac-option-modifier 'meta
 		 mac-command-modifier 'super
 		 mac-right-option-modifier 'none)
+   ;; (lookup-key global-map [magnify-up])
+   ;; mac-magnify-text-scale-or-overview-tab-group
    (define-keys global-map
+	 ;; disable turn on and off fullscreen
+	 [S-magnify-up] 'ignore
+	 [S-magnify-down] 'ignore
      [?\s-v] 'yank
      [?\s-s] 'save-buffer
      [?\C-\s-f] 'toggle-frame-fullscreen)

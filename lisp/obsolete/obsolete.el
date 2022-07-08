@@ -331,17 +331,6 @@ Such as :require, :disable"
     "gy" (sexp-and-normal #'mark-sexp #'comment-and-copy-line)
     "gc" (sexp-and-normal #'mark-sexp #'comment-or-uncomment-dwim)))
 
-(defun my/remind (keybind func-name)
-  "Remind to use KEYBIND to invoke this FUNC-NAME."
-  (unless (key-binding keybind)
-    (warn "keybind %s -> %s does not exist in global map" keybind func-name))
-  (lambda ()
-    (interactive)
-    ;; TODO: maybe call func-name as well
-    (message "use %s to invoke %s"
-	     (propertize (key-description keybind) 'face 'help-key-binding)
-	     func-name)))
-
 (defun org-count-words (start end)
   "This is the count words version that skips comments.
 It will operate between the region from START to END."

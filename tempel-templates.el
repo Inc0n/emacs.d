@@ -6,6 +6,7 @@ prog-mode
 
 (fixme (if (derived-mode-p 'emacs-lisp-mode) ";; " comment-start) "FIXME ")
 (todo (if (derived-mode-p 'emacs-lisp-mode) ";; " comment-start) "TODO ")
+(note comment-start "NOTE ")
 (bug (if (derived-mode-p 'emacs-lisp-mode) ";; " comment-start) "BUG ")
 (hack (if (derived-mode-p 'emacs-lisp-mode) ";; " comment-start) "HACK ")
 
@@ -104,6 +105,7 @@ verilog-mode
 nim-mode
 
 (proc "proc " (p "name") "(" (p "args") "): " (p "return-type") "=" n>)
+;; (template "template " (p "name"))
 
 zig-mode
 

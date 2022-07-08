@@ -14,10 +14,10 @@
 (defmacro define-repeat-mode-map (name &rest key-binds)
   "Define helper for repaet mode map using NAME and KEY-BINDS."
   (let ((map-name (intern (format "%s-repeat-map" name))))
-    (if (boundp map-name)
-        (warn "Keymap `%s' is already defined, overwriting previous value %s."
-              map-name
-              (symbol-value map-name)))
+    (when (boundp map-name)
+      (warn "Keymap `%s' is already defined, overwriting previous value %s."
+            map-name
+            (symbol-value map-name)))
     `(progn
        (defvar ,map-name (make-sparse-keymap))
        ,@(cl-loop for (key command) on key-binds by #'cddr
@@ -26,25 +26,18 @@
                   collect `(put ,command 'repeat-map ',map-name))
        ',map-name)))
 
-(define-keys undo-repeat-map
-  ;; undo is already in this repeat map
-  "r" 'undo-redo)
+;; undo is already in this repeat map
+(define-key undo-repeat-map "r" 'undo-redo)
 
 (define-repeat-mode-map winner
   "u" 'winner-undo
   "r" 'winner-redo)
 
-(define-repeat-mode-map last-change
-  ",")
-
-
-
-;; (put 'selectrum-next-candidate 'repeat-map 'selectsel-quick-navigate-map)
-;; (define-repeat-mode-map flycheck
-;;   "n" 'flycheck-next-error
-;;   "p" 'flycheck-previous-error
-;;   "d" 'flycheck-display-error-at-point
-;;   "e" 'flycheck-explain-error-at-point)
+(define-repeat-mode-map flycheck
+  "n" 'flycheck-next-error
+  "p" 'flycheck-previous-error
+  "h" 'flycheck-display-error-at-point
+  "e" 'flycheck-explain-error-at-point)
 
 ;; (define-repeat-mode-map flyspell
 ;;   "n" 'flyspell-goto-next-error

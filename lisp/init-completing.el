@@ -269,7 +269,7 @@ Use `orderless' for filtering by passing STRING, TABLE and PRED to
 ARG can be used to control the behaviour of `consult-ripgrep'
 A single `universal-argument' can disable preview.
 Two `universal-argument' to change read a different directory to ripgrep."
-  (interactive (list (if current-prefix-arg (util/thing-at-point/deselect) "")))
+  (interactive (list (if current-prefix-arg "" (util/thing-at-point/deselect))))
   (require 'consult)
   ;; (let ((default-directory default-directory))
   ;;   (when (consp arg)
