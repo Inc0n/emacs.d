@@ -89,6 +89,7 @@
 
 ;; gerbil setup
 (use-package gerbil-mode
+  :disabled
   :load-path
   (concat (shell-command-to-string "brew --prefix gerbil-scheme")
 		  "/share/emacs/site-lisp/")

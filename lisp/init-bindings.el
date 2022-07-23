@@ -20,10 +20,11 @@
       (setq mark-ring (nbutlast mark-ring))
       (goto-char (marker-position last)))))
 
-(defun my/remind (keybind func-name)
+(defun my/remind (keybind func-name &optional no-error)
   "Remind to use KEYBIND to invoke this FUNC-NAME."
-  (unless (key-binding keybind)
-    (warn "keybind %s -> %s does not exist in global map" keybind func-name))
+  (when (and (null (key-binding keybind))
+			 (not no-error))
+	(warn "my/remind keybind %s -> %s does not exist in global map" keybind func-name))
   (lambda ()
     (interactive)
     ;; TODO: maybe call func-name as well
@@ -49,6 +50,7 @@
 ;; (popup-tip (documentation 'kill-line))
 
 (use-package emacs-surround :ensure nil
+  :defer t
   :init
   (defun emacs-surround-wrap-sexp ()
 	(interactive)
@@ -203,7 +205,7 @@
   [?\C-\S-s] #'isearch-backward
   [?\C-\S-u] #'join-line
   ;; join line from below
-  [?\C-\S-j] (my/remind [?\C-\S-o] 'reverse-open-line)
+  [?\C-\S-j] (my/remind [?\C-\S-o] 'reverse-open-line :no-error)
   [?\C-\S-o] [?\C-e ?\C-n ?\C-\S-u]
   [?\C-\M-\'] #'vundo
 

@@ -581,6 +581,7 @@ With two PREFIX arguments, write out the day and month name."
 ;;	 (straight-use-package
 ;;	  '(nov-xwidget )))
 (use-package nov-xwidget
+  :disabled
   :straight (nov-xwidget :host github :repo "chenyanming/nov-xwidget" :type git)
   :config
   (add-to-hook 'nov-mode-hook #'nov-xwidget-inject-all-files))
