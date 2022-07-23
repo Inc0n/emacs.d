@@ -10,7 +10,8 @@
 (use-package consult :ensure t
   :defer t
   :config
-  (setq consult-line-start-from-top nil)
+  (setq consult-line-start-from-top nil
+		consult-async-min-input 2)
   (consult-customize
    consult-theme
    consult-buffer
@@ -113,13 +114,14 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
 	[?\M-d] #'corfu-doc-toggle
 	[?\M-p] #'corfu-doc-scroll-down
 	[?\M-n] #'corfu-doc-scroll-up)
+
   :init
   (use-package corfu-doc :defer t :ensure t)
   
   (setq corfu-auto t)
   (setq corfu-auto-delay 0.1)
   (setq corfu-on-exact-match 'insert)
-  (global-corfu-mode 1))
+  (add-hook 'after-init-hook 'global-corfu-mode))
 
 (use-package tempel :ensure t
   :config
@@ -206,7 +208,7 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
 
 (defvar my/enable-pinyin-in-completing-read nil)
 
-(setq completion-styles '(fussy)
+(setq completion-styles '(orderless)
       completion-category-defaults nil
       completion-category-overrides '((file (styles partial-completion))))
 
@@ -231,6 +233,9 @@ To avoid lag, it does not match if length is more than 2000."
 
 ;; it has other scoring/sorting backends such as fzf
 (use-package fussy :ensure t :defer t
+  ;; flx-strings-cache can be 87.6MiB
+  ;; flx-file-cache 0.886 MiB
+  :disabled
   :commands (fussy-all-completions)
   :config
   ;; fussy-fzf-native-score

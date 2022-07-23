@@ -27,10 +27,6 @@ Prefix ARG will prompt for a file name in current directory."
 
 ;;; eww
 
-(with-eval-after-load 'evil
-  (evil-set-initial-state 'eww-mode 'emacs)
-  (evil-set-initial-state 'eww-buffer-mode 'emacs))
-
 (define-hook-setup 'eww-after-render-hook
   "My eww hook setup."
   (let* ((title (plist-get eww-data :title))
@@ -47,6 +43,7 @@ Prefix ARG will prompt for a file name in current directory."
   (setq-local shr-width 90)
   (setq-local fill-column 90
               visual-fill-column-center-text nil)
+  (text-scale-set 1.5)
   (visual-line-mode 1)
   (visual-fill-column-mode 1))
 
@@ -78,7 +75,7 @@ Non-nil ARG will allow search engine selection."
       (message "cannot find engine %s" engine))))
 
 (defun my/eww-readable ()
-  (interactive)
+  (interactive nil eww-mode)
   (eww-readable)
   (setq-local visual-fill-column-center-text t))
 
@@ -86,6 +83,32 @@ Non-nil ARG will allow search engine selection."
   (setq shr-max-image-proportion 0.3))
 
 (with-eval-after-load 'eww
+
+  (advice-add 'eww-download-callback :around 'my/eww-download-using-title)
+  (defun my/eww-download-using-title (orig-func status url dir)
+	"Use a better filename, and selection of directory."
+	(unless (plist-get status :error)
+	
+	  (let* ((dir eww-download-directory)
+			 (name (or (with-current-buffer
+						   (--find (with-current-buffer it
+									 (and (derived-mode-p 'eww-mode)
+										  (string= url
+												   (plist-get eww-data :url))))
+								   (buffer-list))
+						 (concat (plist-get eww-data :title)
+								 ".html"))
+					   (user-error "Cannot current active eww buff")))
+			 (file (eww-make-unique-file-name name
+											  ;; (eww-decode-url-file-name)
+											  dir)))
+
+		(goto-char (point-min))
+		(re-search-forward "\r?\n\r?\n")
+		(let ((coding-system-for-write 'no-conversion))
+		  (write-region (point) (point-max) file))
+		(message "Saved %s" file))))
+
   (define-keys eww-mode-map
     ;; "C-c b" 'w3m-external-view-this-url
     ;; "f" 'my/eww-search
@@ -98,9 +121,11 @@ Non-nil ARG will allow search engine selection."
     "k" 'previous-line
     "J" 'scroll-up-command
     "K" 'scroll-down-command
+	"D" ;; 'eww-toggle-paragraph-direction
     "U" 'eww)
   (defvar eww-home-page "https://lite.duckduckgo.com/")
-  (defvar eww-search-default-engine "duckduckgo"))
+  (defvar eww-search-default-engine "duckduckgo")
+  (setq eww-download-directory "~/sources/browse-session/"))
 
 (provide 'init-browse)
 ;;; init-browse.el ends here

@@ -72,7 +72,8 @@
     [?\C-\M-a] 'nim-nav-backward-block
     [?\C-\M-e] 'nim-nav-forward-block)
   (defun nim-mode-setup ()
-    nil)
+    ;; (flycheck-nimsuggest-setup)
+	(require 'flycheck-nim))
   (add-hook 'nim-mode-hook 'nim-mode-setup))
 
 (use-package tree-sitter :ensure t 
@@ -147,20 +148,79 @@ This function can be re-used by other major modes after compilation."
 (add-to-list 'compilation-finish-functions
 			 'compilation-finish-hide-buffer-on-success)
 
-(use-package paredit-everywhere :ensure t :defer t)
+;; structural editing package
+(use-package puni :ensure t
+  :config
+  ;; (defun paredit-reindent-defun (&optional argument)
+  ;; 	"Reindent the definition that the point is on.
+  ;; If the point is in a string or a comment, fill the paragraph instead,
+  ;;   and with a prefix argument, justify as well."
+  ;; 	(interactive "P")
+  ;; 	(if (or (paredit-in-string-p)
+  ;; 			(paredit-in-comment-p))
+  ;; 		(lisp-fill-paragraph argument)
+  ;;       (paredit-preserving-column
+  ;; 		(save-excursion
+  ;;           (end-of-defun)
+  ;;           (beginning-of-defun)
+  ;;           (indent-sexp)))))
+  (defun handle-sexp (fn arg)
+	"FN ARG."
+	(when (and (null arg)
+			   (not (region-active-p))
+			   ;; if point is before the end of sexp
+			   (-some--> (bounds-of-thing-at-point 'sexp)
+				 (< (point) (cdr it))))
+      (mark-sexp))
+	(call-interactively fn))
+
+  ;; DONE <2021-08-20 FRI>: mark region if char syntax is ?\)
+  ;; small change allow operation to operate on ?\) instead of marking region
+
+  (defun sexp-and-normal (normal-fn)
+	"Check `handle-sexp' for details of SEXP-FN and NORMAL-FN."
+	(if (and (functionp normal-fn)
+			 (commandp normal-fn))
+		(lambda (&optional arg)
+		  (interactive "P")
+		  (handle-sexp normal-fn arg))
+      ;; use warning over error to prevent stopping loading config files
+      (warn "Normal-fn is not an interactive function, %s" normal-fn)))
+
+
+  (defun my/indent-defun ()
+	(interactive)
+	(save-mark-and-excursion
+	  (mark-defun nil :interactive)
+	  (indent-pp-sexp)))
+  (define-keys puni-mode-map
+	;; [C-m ?g ?r] (sexp-and-normal #'copy-and-paste)
+	[?\M-\(] nil						; puni-syntactic-backward-punct
+	[?\M-\)] nil						; puni-syntactic-forward-punct
+	[?\C-j ?r] #'puni-raise
+	[?\C-j ?s] #'puni-split
+	[?\C-j ?t] #'puni-tranpose
+	
+	[?\C-\(] #'puni-slurp-backward
+	[?\C-\)] #'puni-slurp-forward
+	[?\C-\{] #'puni-barf-backward
+	[?\C-\}] #'puni-barf-forward
+	[?\C-\M-q] #'my/indent-defun
+	[?\C-\M-\;] (sexp-and-normal #'comment-or-uncomment-dwim)
+	[?\C-\M-w] (sexp-and-normal #'kill-ring-save)))
 
 (with-eval-after-load 'eldoc
   ;; multi-line message should not display too soon
   (setq eldoc-idle-delay 0.5
-	eldoc-echo-area-use-multiline-p t))
+		eldoc-echo-area-use-multiline-p t))
 
 (use-package rainbow-delimiters :ensure t :defer t
   :init (setq rainbow-delimiters-max-face-count 1))
 
 (defun generic-prog-mode-hook-setup ()
   "My generic `prog-mode-hook' setup function."
-  (prettify-symbols-mode 1)
   (add-to-list 'prettify-symbols-alist '("lambda" . ?λ))
+  (prettify-symbols-mode 1)
 
   (when (not (or (buffer-file-temp-p)
 				 scratch-buffer))
@@ -510,14 +570,10 @@ using e.g. my/skewer-load-file."
 
 ;; @see https://github.com/jorgenschaefer/elpy/issues/1729#issuecomment-880045698
 ;; Fix exit abnormally with code 1
-(use-package elpy :ensure t :defer t)
-
-(use-package python :ensure t
+(use-package elpy :ensure t
+  :disabled
   :defer t
-  ;; :mode ("\\.py\\'" . python-mode)
-  ;; :interpreter ("python" . python-mode)
   :config
-  (add-to-list 'process-coding-system-alist '("python" . (utf-8 . utf-8)))
   ;; use (elpy-config) to configure dependencies
   (elpy-enable)
 
@@ -527,13 +583,35 @@ using e.g. my/skewer-load-file."
   (setq elpy-disable-backend-error-display nil)
   (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
   (setq elpy-rpc-python-command "python3")
-  (setq-default python-indent-offset 4
-                python-indent 4)
-  (setq python-forward-sexp-function #'python-nav-forward-sexp)
-
+  
   (define-keys elpy-mode-map
     (kbd "C-c C-c") nil
-    [C-return] nil)
+    [C-return] nil))
+
+;;; ocaml 
+(use-package tuareg :ensure t
+  :defer t
+  :config
+  (defalias 'ocaml-mode 'tuareg-mode))
+
+(use-package merlin :ensure t
+  :hook (tuareg-mode . merlin-mode))
+
+(use-package merlin-eldoc :ensure t
+  :after tuareg
+  :defer t
+  :hook (tuareg-mode . merlin-eldoc-setup))
+
+(use-package python :ensure t
+  :defer t
+  ;; :mode ("\\.py\\'" . python-mode)
+  ;; :interpreter ("python" . python-mode)
+  :config
+  (add-to-list 'process-coding-system-alist '("python" . (utf-8 . utf-8)))
+ 
+  (setq python-indent-offset 4
+		python-indent-guess-indent-offset nil ; no don't please
+		python-forward-sexp-function #'python-nav-forward-sexp)
   
   ;; http://emacs.stackexchange.com/questions/3322/python-auto-indent-problem/3338#3338
   ;; emacs 24.4+

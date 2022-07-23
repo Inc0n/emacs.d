@@ -23,15 +23,15 @@
 
 (add-hook 'emacs-startup-hook
           (lambda ()
-	    ;; (set-frame-font "Menlo 13" nil t)
-	    (set-face-attribute 'default nil :height 130)
+			;; (set-frame-font "Menlo 13" nil t)
+			(set-face-attribute 'default nil :height 130)
             ;; reset the gc-cons-threshold back to a smaller value
             (setq gc-cons-threshold my/normal-gc-cons-threshold)
             (setq gc-cons-percentage 0.1)
-	    (when (file-exists-p custom-file)
-	      (load custom-file))
             (message "startup time: %s, gcs-done=%d"
-                     (emacs-init-time) gcs-done)))
+                     (emacs-init-time) gcs-done)
+			(when (file-exists-p custom-file)
+			  (load custom-file))))
 
 ;;----------------------------------------------------------------------------
 ;; Load other lisp configs

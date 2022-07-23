@@ -122,7 +122,7 @@ Otherwise behave as if called interactively."
                            `(:eval (,x)))
                           (t  ;; (error "Segment function doesn't exist %s" x)
                            x)))
-                     (if (stringp x)
+                     (if (or (listp x) (stringp x))
                          x
                        (error "Nope %s" x)))))
     (mapcar (lambda (segment) (mapcar #'get-symbol segment))

@@ -62,7 +62,7 @@ EVENT is ignored."
 (use-package vterm :ensure nil
   :config
   (add-to-list 'vterm-eval-cmds '("quick-view" posframe-quick-view-file))
-  (setq vterm-environment (list (format "EMACS_PATH=%s" user-emacs-directory)))
+  (setq vterm-environment (list (format "EMACS_PATH=%s" (file-truename user-emacs-directory))))
 
   ;; setting these keys to nil to allow them to function normally
   (define-keys vterm-mode-map

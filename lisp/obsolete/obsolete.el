@@ -394,3 +394,15 @@ With exception to the current line."
           (progn (delete-trailing-whitespace win-beg line-beg)
                  (delete-trailing-whitespace line-end win-end))
         (delete-trailing-whitespace win-beg win-end)))))
+
+f;; 07-22-2022, using emacs-surround now
+
+;; (local-require 'wrap-region)
+;; (with-eval-after-load 'wrap-region
+;;   (let ((js-mode '((?j . ("JSON.stringify(" . ")"))
+;; 				   (?> . ("(e) => " . "(e)")))))
+;;     (add-to-list 'wrap-region-mode-pairs (cons 'js-mode js-mode))
+;;     (add-to-list 'wrap-region-mode-pairs (cons 'js-mode2 js-mode)))
+;;   (add-to-list 'wrap-region-mode-pairs '(sh-mode (?$ . ("$(" . ")")))))
+
+

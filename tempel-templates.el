@@ -21,6 +21,36 @@ lisp-mode emacs-lisp-mode ;; Specify multiple modes
 
 (lambda (tempel-parse-template "(lambda ($p)\n$>$r>)"))
 
+lisp-mode
+
+(defpackage "(defpackage :"
+  (p
+   (concat
+	(file-name-nondirectory (directory-file-name (file-name-directory (buffer-file-name))))
+	"."
+	(file-name-nondirectory (file-name-sans-extension (buffer-file-name))))
+   pkg)
+  n> "(:use :cl))" n
+  "(in-package :" (s pkg) ")" n)
+
+(defsystem
+  "(asdf:defsystem "
+  (p (file-name-nondirectory (file-name-sans-extension (buffer-file-name))))
+  n> ":version \"0.0.1\""
+  n> ":license \"nil\""
+  n> ":author \"${2:name} <${3:email}>\""
+  n> ":maintainer \"$2 <$3>\""
+  n> ":description \"" p "\""
+  ;; :homepage \"https://github.com/\"
+  ;; :depends-on (#:)
+  n> ":components ((:file \"package\")"
+  n> "(:file \"$5\")"
+  n> "(:module src"
+  n> ":components"
+  n> "((:file \"vec3\")"
+  n> "(:file \"camera\" :depends-on (\"\")))"
+  n> ":serial t)))")
+
 emacs-lisp-mode
 
 (autoload ";;;###autoload")

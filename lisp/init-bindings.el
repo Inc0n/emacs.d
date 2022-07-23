@@ -9,8 +9,7 @@
 
 ;; How to move forward and backward in Emacs `mark-ring'
 ;; https://stackoverflow.com/a/14539202
-(setq mark-ring nil)
-;; pop-to-mark-command
+
 (defun unpop-to-mark-command ()
   "Unpop off mark ring.  Does nothing if mark ring is empty."
   (interactive)
@@ -41,61 +40,23 @@
     (user-error "Cannot use this whilst `isearch-mode' is active"))
   (pcase-let* ((vr-args
 				(visual-replace-make-args
-				 :from text
+				 :from (or text "")
 				 :query t
-				 :regexp regexp
-				 :word nil))
+				 :regexp regexp))
 			   (`(,args ,ranges) (visual-replace-read vr-args)))
     (visual-replace args ranges)))
 
-(defun paredit-spliced-raise ()
-  (interactive)
-  (kill-sexp)
-  (paredit-backward-up)
-  (paredit-forward)
-  (newline-and-indent)
-  (call-interactively 'yank)
-  (pop kill-ring))
+;; (popup-tip (documentation 'kill-line))
 
-;; (popup-tip (documentation 'paredit-copy-as-kill))
-
-(defun handle-sexp (fn arg)
-  "FN ARG."
-  (when (and (null arg)
-			 (not (region-active-p))
-			 ;; if point is before the end of sexp
-			 (-some--> (bounds-of-thing-at-point 'sexp)
-			   (< (point) (cdr it))))
-    (mark-sexp))
-  (call-interactively fn))
-
-;; DONE <2021-08-20 FRI>: mark region if char syntax is ?\)
-;; small change allow operation to operate on ?\) instead of marking region
-
-(defun sexp-and-normal (normal-fn)
-  "Check `handle-sexp' for details of SEXP-FN and NORMAL-FN."
-  (if (and (functionp normal-fn)
-		   (commandp normal-fn))
-      (lambda (&optional arg)
-		(interactive "P")
-		(handle-sexp normal-fn arg))
-    ;; use warning over error to prevent stopping loading config files
-    (warn "Normal-fn is not an interactive function, %s" normal-fn)))
-
-(local-require 'paredit 'force)
-(with-eval-after-load 'paredit
-  (define-keys paredit-mode-map
-    [?\C-\M-w] (sexp-and-normal #'kill-ring-save)
-    [C-m ?g ?r] (sexp-and-normal #'copy-and-paste)
-    (kbd "C-M-;") (sexp-and-normal #'comment-or-uncomment-dwim)))
-
-(local-require 'wrap-region)
-(with-eval-after-load 'wrap-region
-  (let ((js-mode '((?j . ("JSON.stringify(" . ")"))
-				   (?> . ("(e) => " . "(e)")))))
-    (add-to-list 'wrap-region-mode-pairs (cons 'js-mode js-mode))
-    (add-to-list 'wrap-region-mode-pairs (cons 'js-mode2 js-mode)))
-  (add-to-list 'wrap-region-mode-pairs '(sh-mode (?$ . ("$(" . ")")))))
+(use-package emacs-surround :ensure nil
+  :init
+  (defun emacs-surround-wrap-sexp ()
+	(interactive)
+	(emacs-surround-insert "(")
+	(forward-char)
+	(my/indent-defun))
+  (global-set-key (kbd "M-[") 'emacs-surround)
+  (global-set-key (kbd "M-(") 'emacs-surround-wrap-sexp))
 
 (defun move-line-up (start end n)
   (interactive "r\np")
@@ -109,6 +70,7 @@
   (forward-line -1))
 
 ;; {{ Leader key
+
 (defvar leader-keymap (make-sparse-keymap))
 
 (global-set-key [C-m] leader-keymap)
@@ -141,7 +103,6 @@
 
   "eb" #'eval-buffer
 
-  "fp" #'find-file-in-project-at-point
   "fm" #'dired-jump ;; open the dired File Manager from current file
   "fb" #'flyspell-buffer
   "fc" #'flyspell-correct-word-before-point
@@ -205,27 +166,17 @@
   (define-key emacs-lisp-mode-map (kbd "C-c C-u") #'my/unbound-symbol))
 
 (define-keys global-map
-  [?\C-x ?b] #'consult-project-buffer
-  [?\C-h ?d] #'describe-function		; apropos-documentation
-  [?\C-h ?f] #'find-function			; describe-function
-  [?\C-h ?V] #'find-variable
-  [?\C-h ?K] #'find-function-on-key		; Info-goto-emacs-key-command-node
-  [?\C-h ?M] #'describe-keymap
-
   [?\M-n] #'move-line-down
   [?\M-p] #'move-line-up
   
   (kbd "C-x C-i") #'eval-print-last-sexp
   [?\C-x ?\C-b] #'ibuffer
-
-  [?\C-\M-_] #'unpop-to-mark-command
-  [?\C-_] 'pop-to-mark-command
-  
-  [?\M-\[] #'wrap-region-activate
   
   [?\C-s] #'my/isearch-at-point-maybe
   ;; org mode
   [?\C-c ?o ?c] #'org-capture)
+
+(global-unset-key [?\C-z])				; suspend-frame
 
 (with-eval-after-load 'mac-win
   ;; emacs-mac port introduce some unnecessary binds disable them
@@ -236,10 +187,24 @@
 
 ;; Emacs editing binds
 (define-keys global-map
+  
+  [?\C-\M-_] #'unpop-to-mark-command
+  [?\C-_] 'pop-to-mark-command
+
+  [?\C-x ?b] #'consult-project-buffer
+
+  [?\C-h ?d] #'describe-function		; apropos-documentation
+  [?\C-h ?f] #'find-function			; describe-function
+  [?\C-h ?V] #'find-variable
+  [?\C-h ?K] #'find-function-on-key		; Info-goto-emacs-key-command-node
+  [?\C-h ?M] #'describe-keymap
+
   [?\C-\M-s] #'isearch-forward-regexp
+  [?\C-\S-s] #'isearch-backward
   [?\C-\S-u] #'join-line
   ;; join line from below
-  [?\C-\S-j] [?\C-e ?\C-n ?\C-\S-u]
+  [?\C-\S-j] (my/remind [?\C-\S-o] 'reverse-open-line)
+  [?\C-\S-o] [?\C-e ?\C-n ?\C-\S-u]
   [?\C-\M-\'] #'vundo
 
   [s-backspace] (lambda (arg)

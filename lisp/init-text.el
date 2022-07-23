@@ -107,5 +107,8 @@ Check Stolen from http://stackoverflow.com/a/26297700"
   :modes (markdown-mode org-mode text-mode))
 (add-to-list 'flycheck-checkers 'vale 'append)
 
+(with-eval-after-load 'package
+  (define-key package-menu-mode-map "l" [return]))
+
 (provide 'init-text)
 ;;; init-text ends here

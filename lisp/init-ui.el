@@ -48,6 +48,7 @@
           ("*Shell Command Output*" :select nil)
           ("\\*Async Shell.*\\*" :regexp t :ignore t)
           (occur-mode :align t)
+          (racket-repl-mode select nil)
           ;; (,(rx "*" (or "eww history" "Help") "*")
           ;;  :regexp t :select nil :inhibit-window-quit t)
           ("*Completions*" :size 0.3 :align t)
@@ -137,15 +138,15 @@ in `my/linum-inhibit-modes'."
    ;; (:eval (simple-modeline-segment-evil-modal))
    " "
    mode-line-buffer-identification
-   mode-line-position
-
+   " %6p %c:%l "
+   ;; mode-line-position
+   
    mode-line-remote
    ;; mode-line-frame-identification
    " " (vc-mode vc-mode) "  "
    ;; mode-line-modes
    (:propertize "%m" 'face 'bold)
-   (display-minor-mode-line-p
-    minor-mode-alist)
+   ;; (display-minor-mode-line-p minor-mode-alist)
    ;; (:eval (let ((sys (coding-system-plist buffer-file-coding-system)))
    ;;          (if (memq (plist-get sys :category)
    ;;                    '(coding-category-undecided coding-category-utf-8))
@@ -181,12 +182,19 @@ in `my/linum-inhibit-modes'."
   (setq evil-no-display t
         evil-mode-line-format nil))
 
+;; simple-modeline-segments
 (use-package simple-modeline
   :load-path "~/.emacs.d/site-lisp/simple-modeline/"
   :init
   (autoload 'simple-modeline-get-segments "simple-modeline")
   (let ((segments (simple-modeline-get-segments
-                   `(("%e " winum " "
+                   `(("%e "
+					  (winum-mode
+					   (:propertize
+						(:eval (winum-get-number-string))
+						'face 'simple-modeline-important))
+					  ;; winum
+					  " "
 					  ,(propertize "本"
 								   'face 'simple-modeline-status-error
 								   ;; 'simple-modeline-important
@@ -204,7 +212,6 @@ in `my/linum-inhibit-modes'."
   (simple-modeline--update-modeline))
 ;; (add-hook 'after-init-hook
 ;;           (lambda () (run-with-idle-timer 1 nil ')))
-
 ;; }}
 
 ;;; Themes

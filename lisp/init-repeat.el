@@ -7,7 +7,7 @@
 ;;
 
 (use-package repeat
-  :defer 1
+  :defer 2
   :config (setq repeat-on-final-keystroke t)
   :init (add-hook 'emacs-startup-hook 'repeat-mode))
 

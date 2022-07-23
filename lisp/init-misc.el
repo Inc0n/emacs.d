@@ -10,10 +10,6 @@
 (autoload 'popup-tip "popup")
 (autoload 'scrap-interface "scrap")
 
-;; Avoid potential lag:
-;; https://emacs.stackexchange.com/questions/28736/emacs-pointcursor-movement-lag/28746
-;; `next-line' triggers the `format-mode-line' which triggers `projectile-project-name'
-;; I use find-file-in-project instead of projectile. So I don't have this issue at all.
 ;; Set `auto-window-vscroll' to nil to avoid triggering `format-mode-line'.
 (setq auto-window-vscroll nil)
 ;; (setq scroll-step 0
@@ -166,10 +162,9 @@
   :config
   (defun my/isearch-at-point-maybe (arg)
 	(interactive "P")
-	(call-interactively
-	 (if arg
-		 'isearch-forward-thing-at-point
-	   'isearch-forward)))
+	(cond ((equal '(4) arg) (isearch-forward-thing-at-point))
+		  ((equal '(16) arg) (isearch-forward-symbol-at-point))
+		  (:else (call-interactively 'isearch-forward))))
 
   (defun isearch-within-defun-cleanup ()
 	(widen)
@@ -219,25 +214,12 @@ TODO: Any prefix ARG will turn the search to occur."
 				  (isearch-repeat-backward))
 				(isearch-exit)			; needs to quit before
 				(visual-replace-regexp-text-at-point
-				 isearch-string isearch-regexp)))
-	[escape] 'isearch-abort)
+				 isearch-string isearch-regexp))))
   :init
   (setq isearch-lazy-count t			; enable match numbers count
 		isearch-lazy-highlight t
 		lazy-count-prefix-format "%s/%s "
 		lazy-highlight-cleanup t))
-
-(use-package find-file-in-project :ensure t
-  :disabled
-  :defer t
-  :config
-  (defun my/search-git-reflog-code ()
-	(let ((default-directory
-			(my/git-root-dir)))
-	  (ffip-shell-command-to-string
-	   (format "git --no-pager reflog --date=short -S\"%s\" -p"
-			   (read-string "Regex: ")))))
-  (setq ffip-match-path-instead-of-filename t))
 
 (with-eval-after-load 'bookmark
   ;; use my own bookmark if it exists
@@ -599,8 +581,7 @@ With two PREFIX arguments, write out the day and month name."
 ;;	 (straight-use-package
 ;;	  '(nov-xwidget )))
 (use-package nov-xwidget
-  :disabled
-  :straight (:host github :repo "chenyanming/nov-xwidget" :type git)
+  :straight (nov-xwidget :host github :repo "chenyanming/nov-xwidget" :type git)
   :config
   (add-to-hook 'nov-mode-hook #'nov-xwidget-inject-all-files))
 
@@ -631,7 +612,7 @@ With two PREFIX arguments, write out the day and month name."
 
 (use-package ligature
   :disabled
-  :defer t
+  :defer 1
   :commands (global-ligature-mode)
   :config
   ;; (setq ligature-composition-table nil)
@@ -643,7 +624,8 @@ With two PREFIX arguments, write out the day and month name."
 						  '("::" ":::" "->" "=>" "==" "===" "!="
 				"++" "<-" "/=" ">=" "<=" ".."
 				"..." "&&" "||" "//"))
-  :init (add-hook 'after-init-hook 'global-ligature-mode))
+  :init
+  (global-ligature-mode 1))
 
 (use-package flycheck :ensure t
   :defer t
@@ -741,7 +723,9 @@ By locating package.json around DIR."
 			  (length files-to-delete))))
 		backup-directory-alist)))
 
-(use-package mini-frame :ensure t
+(use-package mini-frame
+  :ensure nil
+  :disabled
   :config
   (setq mini-frame-show-parameters
 	'((top . 0.4)
@@ -889,6 +873,10 @@ By locating package.json around DIR."
   (setq skeletor-completing-read-function 'completing-read)
   (skeletor-define-template "verilog"
 	:title "Verilog"
+	:no-license? t
+	:no-git? t)
+  (skeletor-define-template "gerbil"
+	:title "Gerbil"
 	:no-license? t
 	:no-git? t)
   (defun skeletor-underscore-proj-name ()

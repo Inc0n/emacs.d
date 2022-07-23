@@ -23,11 +23,6 @@
 
 (require 'subr-x)
 
-(defun simple-modeline-segment-winum ()
-  "Winum modeline segment setup."
-  (propertize (winum-get-number-string)
-              'face 'simple-modeline-important))
-
 (defvar simple-modeline-modified-status-plist
   '(read-only "禁" modified "写" default "梁"))
 

@@ -12,7 +12,7 @@
 ;; lisp mode setups
 (defun my/lisp-setup ()
   "Enable features useful in any Lisp mode."
-  (paredit-mode 1)
+  (puni-mode 1)
   (rainbow-delimiters-mode 1)
   (turn-on-eldoc-mode)
   (checkdoc-minor-mode 1)
@@ -31,10 +31,9 @@
                 inferior-lisp-mode-hook
                 lisp-interaction-mode-hook
                 slime-repl-mode-hook
-                ;; sly-mrepl-mode-hook
+				;; sly-mrepl-mode-hook
                 ;;
-                hy-mode-hook
-                scheme-mode-hook
+				scheme-mode-hook
                 gerbil-mode-hook))
   (add-hook hook #'my/lisp-setup))
 
@@ -42,9 +41,27 @@
 (require-package 'racket-mode)
 (with-eval-after-load 'racket-mode
   ;; this would breaks pyim (chinese input)
-  ;; (add-hook 'racket-mode-hook      #'racket-unicode-input-method-enable)
+  ;; (add-hook 'racket-mode-hook #'racket-unicode-input-method-enable)
   ;; (add-hook 'racket-repl-mode-hook #'racket-unicode-input-method-enable)
-  (setq racket-images-system-viewer "qiv"))
+  ;; (setq racket-images-system-viewer "qiv")
+
+  (defun my/racket-mark-defun ()
+	(interactive)
+	(while (condition-case err
+			   (call-interactively 'backward-up-list)
+			 (user-error nil)
+			 (:success t)))
+	(beginning-of-line)
+	(activate-mark)
+	(forward-sexp))
+
+  (defun my/racket-repl-restart ()
+	(interactive)
+	(when (racket--repl-live-p)
+	  (comint-send-string
+	   (get-buffer-process racket-repl-buffer-name)
+	   ""))
+	(racket-repl)))
 
 ;; slime swank
 
@@ -55,15 +72,14 @@
 
 (with-eval-after-load 'slime
   ;; (require 'slime-media)
-  ;; in-case not loaded properly, i will do it mysel
+  ;; in-case not loaded properly, I will do it myself
   (add-hook 'slime-event-hooks 'slime-dispatch-media-event)
-  ;; (setq slime-enable-evaluate-in-emacs nil)
-  ;;
 
   (setq slime-lisp-implementations
-		`((sbcl (,(executable-find "sbcl")))
-		  (gerbil-scheme ("gxi" "-:d-") :init gerbil-scheme-start-swank)))
-  (setq slime-lisp-implementations nil))
+		nil
+		;; `((sbcl (,(executable-find "sbcl")))
+		;;   (gerbil-scheme ("gxi" "-:d-") :init gerbil-scheme-start-swank))
+		))
 
 ;;; gerbil
 
@@ -72,19 +88,24 @@
 (add-hook 'inferior-scheme-mode-hook #'gambit-inferior-mode)
 
 ;; gerbil setup
-(use-package gerbil
-  :disabled
+(use-package gerbil-mode
+  :load-path
+  (concat (shell-command-to-string "brew --prefix gerbil-scheme")
+		  "/share/emacs/site-lisp/")
+  :config
+  (setq gerbil-program-name (executable-find "gxi"))
   :init
-  (defvar my/gerbil-home (getenv "GERBIL_HOME"))
-  (let ((gerbil-program-name (concat my/gerbil-home "/bin/gxi")))
-    ;; gerbil mode
-    (add-to-list 'load-path (concat my/gerbil-home "/etc/"))
-    (autoload 'gerbil-mode "gerbil-mode" "Gerbil editing mode." t)
-    ;; gerbil tags
-    ;; (add-to-list 'tags-table-list (concat my/gerbil-home "/src/TAGS"))
-    (setq scheme-program-name gerbil-program-name))
-
-  (add-auto-mode 'gerbil-mode "\\.ss$"))
+  ;; (defvar my/gerbil-home (getenv "GERBIL_HOME"))
+  ;; (let ((gerbil-program-name (concat my/gerbil-home "/bin/gxi")))
+  ;;   ;; gerbil mode
+  ;;   (add-to-list 'load-path (concat my/gerbil-home "/etc/"))
+  ;;   (autoload 'gerbil-mode "gerbil-mode" "Gerbil editing mode." t)
+  ;;   ;; gerbil tags
+  ;;   ;; (add-to-list 'tags-table-list (concat my/gerbil-home "/src/TAGS"))
+  ;;   (setq scheme-program-name gerbil-program-name))
+  
+  ;; (add-auto-mode 'gerbil-mode "\\.ss$")
+  )
 
 (with-eval-after-load 'geiser
   ;; (geiser-implementation-extension 'guile "scm")
@@ -99,4 +120,4 @@
 ;; gxtags [-a] [-o TAGS] source-file-or-directory ...
 
 (provide 'init-lisp)
-;;; init-lisp ends here
+;;; init-lisp.el ends here

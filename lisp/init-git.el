@@ -217,28 +217,28 @@ If only one line is selected, use current selection as function name to look up.
 If nothing is selected, use the word under cursor as function name to look up."
   (interactive)
   (when buffer-file-name
-    (let* ((range-or-func
+	(let* ((range-or-func
 			(if (region-active-p)
-                (if (util/in-one-line-p (region-beginning) (region-end))
+				(if (util/in-one-line-p (region-beginning) (region-end))
 					(format ":%s" (util/selected-str))
 				  (format "%s,%s"
 						  (line-number-at-pos (region-beginning))
 						  (line-number-at-pos (1- (region-end)))))
 			  (format ":%s" (thing-at-point 'symbol))))
-           (cmd (format "git log -L%s:%s"
+		   (cmd (format "git log -L%s:%s"
 						range-or-func
 						(file-truename buffer-file-name)))
-           (result (shell-command-to-string cmd)))
-      (when (string-match-p "no match" result)
-        ;; mark current function and try again
-        (mark-defun)
-        (setq range-or-func (format "%s,%s"
-                                    (line-number-at-pos (region-beginning))
-                                    (line-number-at-pos (1- (region-end)))))
-        (setq cmd (format "git log -L%s:%s" range-or-func (file-truename buffer-file-name))))
-      ;; (message cmd)
-      (util/ensure 'find-file-in-project)
-      (ffip-show-content-in-diff-mode (shell-command-to-string cmd)))))
+		   (result (shell-command-to-string cmd)))
+	  (when (string-match-p "no match" result)
+		;; mark current function and try again
+		(mark-defun)
+		(setq range-or-func (format "%s,%s"
+									(line-number-at-pos (region-beginning))
+									(line-number-at-pos (1- (region-end)))))
+		(setq cmd (format "git log -L%s:%s" range-or-func (file-truename buffer-file-name))))
+	  ;; (message cmd)
+	  ;; TODO Deal with the output
+	  (shell-command-to-string cmd))))
 
 (provide 'init-git)
 ;;; init-git.el ends here
