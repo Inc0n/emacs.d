@@ -4,44 +4,54 @@
 ;;; Code:
 
 ;; avoid default "gnu" style, use more popular one
-(setq c-default-style '((java-mode . "java")
-                        (awk-mode . "awk")
-                        (other . "gnu")))
+(with-eval-after-load 'cc-mode
+  (setq c-default-style '((java-mode . "java")
+						  (awk-mode . "awk")
+						  (other . "gnu"))
+		c-style-variables-are-local-p nil)
 
-(setq-default c-basic-offset 4)
+  (setq-default c-basic-offset 'set-from-style
+				c-indent-level)
+
+  (define-keys c-mode-map
+	[tab] #'indent-for-tab-command
+	;; @see
+	;; http://stackoverflow.com/questions/3509919/emacs-c-opening-corresponding-header-file
+	[?\C-x ?\C-o] #'ff-find-other-file)
+
+  ;; don't use c-mode-common-hook or cc-mode-hook because many major-modes use this hook
+  (add-hook 'c-mode-common-hook 'my/common-cc-mode-setup)
+  (add-hook 'c-mode-hook 'my/c-mode-setup)
+  (add-hook 'c++-mode-hook 'my/c-mode-setup))
 
 (defun my/common-cc-mode-setup ()
   "Setup shared by all languages (java/groovy/c++ ...)."
   ;; give me NO newline automatically after electric expressions are entered
   (setq c-auto-newline nil)
-  (setq-local tab-width 4)		; make sure its 4
+  (setq-local tab-width 2)				; make sure its
+  (setq-local c-basic-offset 2)
 
   (eldoc-mode 1)
 
   ;; make DEL take all previous whitespace with it
   (c-toggle-hungry-state 1)
 
-  (c-set-style "awk")
+  (c-set-style "cc-mode")
   ;; (mapcar 'car c-style-alist)
   ;; indent
   ;; google "C/C++/Java code indentation in Emacs" for more advanced skills
   ;; C code:
-  ;;   if(1) // press ENTER here, indent with 4 spaces
+  ;;   if(1) // press ENTER here, indent with N spaces
   (c-set-offset 'substatement 4)
   ;;   void fn() // press ENTER here, zero means no indentation
   (c-set-offset 'func-decl-cont 0))
 
 (defun my/c-mode-setup ()
   "C/C++ only setup."
-  ;; @see http://stackoverflow.com/questions/3509919/ \
-  ;; emacs-c-opening-corresponding-header-file
-  (local-set-key (kbd "C-x C-o") 'ff-find-other-file)
 
-  (add-to-list 'company-backends 'company-cmake)
-  (add-to-list 'company-backends 'company-c-headers)
-
+  (setq c-basic-offset 4)
   (setq cc-search-directories
-        '("." "/usr/include" "/usr/local/include/*" "../*/include" "$WXWIN/include"))
+		'("." "/usr/include" "/usr/local/include/*" "../*/include" "$WXWIN/include"))
 
   ;; {{ @see https://github.com/redguardtoo/cpputils-cmake
   ;; In theory, you can write your own Makefile for `flyamke-mode' without cmake.
@@ -52,16 +62,10 @@
   ;; make a #define be left-aligned
   (setq c-electric-pound-behavior '(alignleft)))
 
-(with-eval-after-load 'cc-mode
-  (define-key c-mode-map [tab] 'indent-for-tab-command))
-;; don't use c-mode-common-hook or cc-mode-hook because many major-modes use this hook
-(add-hook 'c-mode-common-hook 'my/common-cc-mode-setup)
-(add-hook 'c-mode-hook 'my/c-mode-setup)
-(add-hook 'c++-mode-hook 'my/c-mode-setup)
-
 (use-package zig-mode :defer t :ensure t
   :config
   (setq zig-return-to-buffer-after-format t
+		zig-indent-offset 2
 		zig-format-on-save nil))
 
 (use-package nim-mode
@@ -69,84 +73,90 @@
   :config
   (setq nim-smie-indent-dedenters nil)
   (define-keys nim-mode-map
-    [?\C-\M-a] 'nim-nav-backward-block
-    [?\C-\M-e] 'nim-nav-forward-block)
+	[?\C-\M-a] 'nim-nav-backward-block
+	[?\C-\M-e] 'nim-nav-forward-block)
   (defun nim-mode-setup ()
-    ;; (flycheck-nimsuggest-setup)
+	;; (flycheck-nimsuggest-setup)
 	(require 'flycheck-nim))
   (add-hook 'nim-mode-hook 'nim-mode-setup))
 
-(use-package tree-sitter :ensure t 
+(use-package tree-sitter :ensure t
   :config
   (global-tree-sitter-mode 1)
   (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode))
 
 (use-package tree-sitter-ispell
-  :disabled 
+  :disabled
   (defvar tree-sitter-default-text-grammar '(string comment))
   (defvar tree-sitter-text-grammar-alist
-    '((js-mode string template_string comment)))
+	'((js-mode string template_string comment)))
 
   (defun get-text-node-at-point ()
-    "Get the text node at point, to each major mode grammar."
-    (car					; get first valid match 
-     (seq-some (lambda (type)
+	"Get the text node at point, to each major mode grammar."
+	(car					; get first valid match
+	 (seq-some (lambda (type)
 		 (tree-sitter-node-at-point type))
-	       (alist-get major-mode tree-sitter-text-grammar-alist
+		   (alist-get major-mode tree-sitter-text-grammar-alist
 			  tree-sitter-default-text-grammar))))
 
   (defun run-ispell-at-point ()
-    "Run Ispell on text node at point if found."
-    (interactive)
-    (when-let ((node (get-text-node-at-point)))
-      (ispell-region
-       (tsc-node-start-position node)
-       (tsc-node-end-position node)))))
+	"Run Ispell on text node at point if found."
+	(interactive)
+	(when-let ((node (get-text-node-at-point)))
+	  (ispell-region
+	   (tsc-node-start-position node)
+	   (tsc-node-end-position node)))))
 
 (use-package tree-sitter-langs :ensure t
   :after tree-sitter)
 
 (with-eval-after-load 'elec-pair
   (setq electric-pair-inhibit-predicate
-        (defun my/electric-pair-inhibit (char)
-          ;; (electric-pair-conservative-inhibit char)
-          (or (electric-pair-default-inhibit char)
-              (and (memq major-mode '(minibuffer-inactive-mode))
+		(defun my/electric-pair-inhibit (char)
+		  ;; (electric-pair-conservative-inhibit char)
+		  (or (electric-pair-default-inhibit char)
+			  (and (memq major-mode '(minibuffer-inactive-mode))
 		   (not (string-match "^Eval:" (buffer-string))))
-              (let ((char-after (following-char)))
-	        (eq (char-syntax char) (char-syntax char-after))
-	        ;; input single/double quotes at the end of word
-	        (and (memq char '(?\" ?\'))
-                     char-after
-                     (eq (char-syntax char-after) ?w))
-	        ;; I find it more often preferable not to pair when the
-	        ;; same char is next.
-	        (eq char char-after)
-	        ;; Don't pair up when we insert the second of "" or of ((.
-	        ;; (and (eq char ?\") (eq char char-after))
-                ;; I also find it often preferable not to pair next to a word.
-                (and (eq (char-charset char-after) 'ascii)
-                     (eq (char-syntax char-after) ?w)))))))
+			  (let ((char-after (following-char)))
+			(eq (char-syntax char) (char-syntax char-after))
+			;; input single/double quotes at the end of word
+			(and (memq char '(?\" ?\'))
+					 char-after
+					 (eq (char-syntax char-after) ?w))
+			;; I find it more often preferable not to pair when the
+			;; same char is next.
+			(eq char char-after)
+			;; Don't pair up when we insert the second of "" or of ((.
+			;; (and (eq char ?\") (eq char char-after))
+				;; I also find it often preferable not to pair next to a word.
+				(and (eq (char-charset char-after) 'ascii)
+					 (eq (char-syntax char-after) ?w)))))))
+
+(with-eval-after-load 'compile
+  (setq compilation-scroll-output t)
+
+  ;; ANSI-escape coloring in compilation-mode
+  (add-hook 'compilation-filter-hook #'ansi-color-compilation-filter)
+
+  ;; @see http://xugx2007.blogspot.com.au/2007/06/benjamin-rutts-emacs-c-development-tips.html
+  (add-to-list 'compilation-finish-functions
+			   'compilation-finish-hide-buffer-on-success))
 
 (defun compilation-finish-hide-buffer-on-success (buffer str)
   "Bury BUFFER whose name marches STR.
 This function can be re-used by other major modes after compilation."
   ;;TODO: only exit window if window was created
   (if (string-match "exited abnormally" str)
-      ;; there were errors
-      (message "compilation errors, press C-x ` to visit")
-    (when (and (buffer-name buffer)
-               (string-match "*compilation*" (buffer-name buffer)))
-      ;; @see http://emacswiki.org/emacs/ModeCompile#toc2
-      (bury-buffer buffer)
-      ;; (with-selected-window (get-buffer-window buffer)
-      ;;   (delete-window))
-      ;; (winner-undo)
-      (message "NO COMPILATION ERRORS!"))))
-
-;; @see http://xugx2007.blogspot.com.au/2007/06/benjamin-rutts-emacs-c-development-tips.html
-(add-to-list 'compilation-finish-functions
-			 'compilation-finish-hide-buffer-on-success)
+	  ;; there were errors
+	  (message "compilation errors, press C-x ` to visit")
+	(when (and (buffer-name buffer)
+			   (string-match "*compilation*" (buffer-name buffer)))
+	  ;; @see http://emacswiki.org/emacs/ModeCompile#toc2
+	  (bury-buffer buffer)
+	  ;; (with-selected-window (get-buffer-window buffer)
+	  ;;   (delete-window))
+	  ;; (winner-undo)
+	  (message "NO COMPILATION ERRORS!"))))
 
 ;; structural editing package
 (use-package puni :ensure t
@@ -171,12 +181,11 @@ This function can be re-used by other major modes after compilation."
 			   ;; if point is before the end of sexp
 			   (-some--> (bounds-of-thing-at-point 'sexp)
 				 (< (point) (cdr it))))
-      (mark-sexp))
+	  (mark-sexp))
 	(call-interactively fn))
 
   ;; DONE <2021-08-20 FRI>: mark region if char syntax is ?\)
   ;; small change allow operation to operate on ?\) instead of marking region
-
   (defun sexp-and-normal (normal-fn)
 	"Check `handle-sexp' for details of SEXP-FN and NORMAL-FN."
 	(if (and (functionp normal-fn)
@@ -184,23 +193,40 @@ This function can be re-used by other major modes after compilation."
 		(lambda (&optional arg)
 		  (interactive "P")
 		  (handle-sexp normal-fn arg))
-      ;; use warning over error to prevent stopping loading config files
-      (warn "Normal-fn is not an interactive function, %s" normal-fn)))
-
+	  ;; use warning over error to prevent stopping loading config files
+	  (warn "Normal-fn is not an interactive function, %s" normal-fn)))
 
   (defun my/indent-defun ()
 	(interactive)
 	(save-mark-and-excursion
 	  (mark-defun nil :interactive)
-	  (indent-pp-sexp)))
+	  ;; indent-pp-sexp
+	  (indent-region (region-beginning) (region-end))))
+
+  ;; this is not realistic, as different languages has different key
+  ;; for comment, there is not a realible and easy way to ensure all
+  ;; comment keys to be bind to this function (defun
+  ;; my/puni-insert-comment () (interactive) (beginning-of-line)
+  ;; (unless (looking-at-p (rx line-start (+ space) line-end))
+  ;; (newline)) (call-interactively #'self-insert-command))
+
   (define-keys puni-mode-map
 	;; [C-m ?g ?r] (sexp-and-normal #'copy-and-paste)
+	;; free up the following key binds
+	[?\C-\M-a] nil						; puni-beginning-of-sexp
+	[?\C-\M-e] nil						; puni-end-of-sexp
 	[?\M-\(] nil						; puni-syntactic-backward-punct
 	[?\M-\)] nil						; puni-syntactic-forward-punct
-	[?\C-j ?r] #'puni-raise
-	[?\C-j ?s] #'puni-split
-	[?\C-j ?t] #'puni-tranpose
-	
+	[?\M-r] #'puni-raise
+	[remap split-line] #'puni-split			 ; C-M-o
+	[remap transpose-sexps] #'puni-transpose ; C-M-t
+
+	;; newline just creates annoying newline
+	[remap newline] #'reindent-then-newline-and-indent
+
+	[?\C-\M-\-] #'goto-last-change
+	[?\C-\M-=] #'goto-last-change-reverse
+
 	[?\C-\(] #'puni-slurp-backward
 	[?\C-\)] #'puni-slurp-forward
 	[?\C-\{] #'puni-barf-backward
@@ -219,17 +245,23 @@ This function can be re-used by other major modes after compilation."
 
 (defun generic-prog-mode-hook-setup ()
   "My generic `prog-mode-hook' setup function."
-  (add-to-list 'prettify-symbols-alist '("lambda" . ?λ))
+
+  (setq prettify-symbols-alist
+		'(("lambda" . ?λ)
+		  ("!=" . ?≠)
+		  ("<=" . ?≤)
+		  (">=" . ?≥)))
   (prettify-symbols-mode 1)
 
-  (when (not (or (buffer-file-temp-p)
-				 scratch-buffer))
-    ;; Selectively enable flycheck-mode
-    (flycheck-mode 1))
+  ;; (buffer-face-set :family "SF Mono" :height 130)
+
+  (flycheck-mode 1)						; check for syntax
 
   ;; enable for all programming modes
   ;; http://emacsredux.com/blog/2013/04/21/camelcase-aware-editing/
 
+  (puni-mode 1)
+  (whitespace-mode 1)
   ;; (setq show-trailing-whitespace nil)
   (electric-pair-mode 1)		  ; auto insert pairing delimiter
   ;; (hs-minor-mode 1)				  ; code/comment fold
@@ -239,6 +271,7 @@ This function can be re-used by other major modes after compilation."
 
 ;; some major-modes do NOT inherited from prog-mode
 (add-hook 'prog-mode-hook #'generic-prog-mode-hook-setup)
+
 (with-eval-after-load 'prog-mode
   (define-key prog-mode-map [?\M-o] 'avy-goto-line))
 
@@ -251,12 +284,17 @@ This function can be re-used by other major modes after compilation."
   (setq-local comment-start "%"
 			  comment-add 0))
 
+(use-package odin-mode
+  :straight (odin-mode :type git :host github
+					   :repo "mattt-b/odin-mode"
+					   :files ("*.el")))
 (use-package rust-mode :defer t :ensure t :mode "\\.rs\\'")
 
 (use-package dart-mode :defer t :ensure t)
 (use-package kotlin-mode :defer t :ensure t)
 (use-package groovy-mode :defer t :ensure t) ; gradle syntax highlighting
-(local-require 'gradle-mode)
+
+;; (autoload 'gradle-mode "gradle-mode")
 
 (use-package julia-mode :defer t :ensure t
   :config (setq julia-indent-offset 3))
@@ -272,25 +310,27 @@ This function can be re-used by other major modes after compilation."
 ;;                   ("Module" "^ *module +\\([^ ]+\\) *$" 1)
 ;;                   ("Variable" "^ *local +\\([^ ]+\\).*$" 1)))))
 
-(require-package 'elgot)
+(require-package 'eglot)
+(with-eval-after-load 'eglot
+  (setq eglot-confirm-server-initiated-edits nil))
 
 (use-package lsp-mode :ensure t
   :disabled
   :defer t
   :init (setq lsp-keymap-prefix "C-c l")
   (use-package lsp-ui :ensure t
-    :disabled
-    :defer t
-    :init
-    (setq lsp-ui-doc-enable nil
-          lsp-ui-doc-position 'top
-          lsp-ui-doc-include-signature t
-          lsp-ui-doc-show-with-mouse nil)
-    ;; (custom-set-faces
-    ;;  '(lsp-ui-doc-header ((t (:weight bold)))))
-    ;; (add-hook 'lsp-ui-doc-frame-hook)
-    (add-hook 'lsp-ui-doc-frame-mode-hook
-              (defun lsp-ui-doc-frame-setup ()
+	:disabled
+	:defer t
+	:init
+	(setq lsp-ui-doc-enable nil
+		  lsp-ui-doc-position 'top
+		  lsp-ui-doc-include-signature t
+		  lsp-ui-doc-show-with-mouse nil)
+	;; (custom-set-faces
+	;;  '(lsp-ui-doc-header ((t (:weight bold)))))
+	;; (add-hook 'lsp-ui-doc-frame-hook)
+	(add-hook 'lsp-ui-doc-frame-mode-hook
+			  (defun lsp-ui-doc-frame-setup ()
 		(setq-local display-line-numbers nil)))))
 
 (use-package qml-mode :ensure t)
@@ -300,22 +340,21 @@ This function can be re-used by other major modes after compilation."
 (require-package 'tagedit) ; paredit for html
 
 (define-hook-setup 'web-mode-hook
-  (unless (buffer-file-temp-p)
-    (setq-local my/flyspell-check-doublon nil)))
+  (setq-local my/flyspell-check-doublon nil))
 
 (with-eval-after-load 'web-mode
   ;; make org-mode export fail, I use evil and evil-matchit
   ;; to select text, so expand-region.el is not used
   (remove-hook 'web-mode-hook 'er/add-web-mode-expansions)
   (setq web-mode-enable-auto-closing t ; enable auto close tag in text-mode
-        web-mode-enable-auto-pairing t
-        web-mode-enable-css-colorization t)
+		web-mode-enable-auto-pairing t
+		web-mode-enable-css-colorization t)
   (setq web-mode-imenu-regexp-list
-        '(("<\\(h[1-9]\\)\\([^>]*\\)>\\([^<]*\\)" 1 3 ">" nil)
-          ("^[ \t]*<\\([@a-z]+\\)[^>]*>? *$" 1 " id=\"\\([a-zA-Z0-9_]+\\)\"" "#" ">")
-          ("^[ \t]*<\\(@[a-z.]+\\)[^>]*>? *$" 1 " contentId=\"\\([a-zA-Z0-9_]+\\)\"" "=" ">")
-          ;; angular imenu
-          (" \\(ng-[a-z]*\\)=\"\\([^\"]+\\)" 1 2 "="))))
+		'(("<\\(h[1-9]\\)\\([^>]*\\)>\\([^<]*\\)" 1 3 ">" nil)
+		  ("^[ \t]*<\\([@a-z]+\\)[^>]*>? *$" 1 " id=\"\\([a-zA-Z0-9_]+\\)\"" "#" ">")
+		  ("^[ \t]*<\\(@[a-z.]+\\)[^>]*>? *$" 1 " contentId=\"\\([a-zA-Z0-9_]+\\)\"" "=" ">")
+		  ;; angular imenu
+		  (" \\(ng-[a-z]*\\)=\"\\([^\"]+\\)" 1 2 "="))))
 
 ;;; Css
 
@@ -323,13 +362,13 @@ This function can be re-used by other major modes after compilation."
 
 (defun common-css-mode-setup ()
   "Css mode setup."
-  (unless (buffer-file-temp-p)
-    (rainbow-mode 1)
-    (setq imenu-generic-expression
-          '((nil "^ *\\([a-zA-Z0-9&,.: _-]+\\) *{ *$" 1)
-            ("Variable" "^ *\\$\\([a-zA-Z0-9_]+\\) *:" 1)
-            ;; post-css mixin
-            ("Function" "^ *@define-mixin +\\([^ ]+\\)" 1)))))
+  (rainbow-mode 1)
+  ;; (setq imenu-generic-expression
+  ;; 		'((nil "^ *\\([a-zA-Z0-9&,.: _-]+\\) *{ *$" 1)
+  ;; 		  ("Variable" "^ *\\$\\([a-zA-Z0-9_]+\\) *:" 1)
+  ;; 		  ;; post-css mixin
+  ;; 		  ("Function" "^ *@define-mixin +\\([^ ]+\\)" 1)))
+  )
 
 (use-package css-mode
   :mode ("\\.css\\'" . css-mode)
@@ -363,130 +402,130 @@ This function can be re-used by other major modes after compilation."
   ;; https://sachachua.com/blog/2014/11/emacs-evaluating-javascript-css-chrome-using-skewer-mode/
   :config
   (add-hook 'skewer-js-hook
-	    (defun my/skewer-extra-handler ()
-	      ;; Module handler
-	      (insert
-	       "skewer.fn.module = function(request) {
-    var script = document.createElement('script');
-    script.src = skewer.host + request.eval;
-    script.type = 'module';
-    document.body.appendChild(script);
-    return {value: JSON.stringify(request.eval)};
+			(defun my/skewer-extra-handler ()
+			  ;; Module handler
+			  (insert
+			   "skewer.fn.module = function(request) {
+	var script = document.createElement('script');
+	script.src = skewer.host + request.eval;
+	script.type = 'module';
+	document.body.appendChild(script);
+	return {value: JSON.stringify(request.eval)};
 };
 ")
-	      ;; load project file
-	      (if (file-exists-p my/skewer-project-file)
-		  (progn
-		    (message "My skewer project setup file loaded %s"
-			     my/skewer-project-file)
+			  ;; load project file
+			  (if (file-exists-p my/skewer-project-file)
+				  (progn
+					(message "My skewer project setup file loaded %s"
+							 my/skewer-project-file)
 
-		    (load-file my/skewer-project-file))
-		(message "No skewer project file setup."))))
+					(load-file my/skewer-project-file))
+				(message "No skewer project file setup."))))
 
   ;; project file setup
   (defvar my/skewer-project-file-name "./skewer-project.el")
   (defvar-local my/skewer-project-file my/skewer-project-file-name)
 
   (defun my/skewer-setup-project-file (&optional arg)
-    "My wrapper around `run-skewer', which loads `my/skewer-project-file' also.
+	"My wrapper around `run-skewer', which loads `my/skewer-project-file' also.
 This project file is just an elisp file to setup dependencies
 using e.g. my/skewer-load-file."
-    (interactive "p")
-    (setq-local my/skewer-project-file
-		(expand-file-name
-		 (cl-case arg
-		   (4  (read-file-name "Skewer project file: "))
-		   (16 (current-buffer))
-		   (otherwise my/skewer-project-file-name)))))
+	(interactive "p")
+	(setq-local my/skewer-project-file
+				(expand-file-name
+				 (cl-case arg
+				   (4  (read-file-name "Skewer project file: "))
+				   (16 (current-buffer))
+				   (otherwise my/skewer-project-file-name)))))
 
   (defun my/run-skewer (arg)
-    (interactive "p")
-    (my/skewer-setup-project-file)
-    (call-interactively #'run-skewer))
+	(interactive "p")
+	(my/skewer-setup-project-file)
+	(call-interactively #'run-skewer))
 
   (cl-defun my/skewer-cache-file (file &key (type "script") (extra nil))
-    (if (file-exists-p file)
-	(message "loading %s" file)
-      (user-error "This file doesn't exist %s" file))
-    (let* ((parent-dir
-	    (file-name-nondirectory
-	     (directory-file-name default-directory)))
-	   (id
-	    (md5 (format "%s/%s" parent-dir file))))
-      ;; host this script
-      (setf (cache-table-get id skewer-hosted-scripts)
-	    (with-temp-buffer
-	      (insert-file-contents file)
-	      (buffer-string)))
-      (skewer-eval (format "/skewer/script/%s/%s"
-			   id
-			   file)
-                   (lambda (_) (message "%s loaded" file))
-                   :type type
-		   :extra extra)))
+	(if (file-exists-p file)
+		(message "loading %s" file)
+	  (user-error "This file doesn't exist %s" file))
+	(let* ((parent-dir
+			(file-name-nondirectory
+			 (directory-file-name default-directory)))
+		   (id
+			(md5 (format "%s/%s" parent-dir file))))
+	  ;; host this script
+	  (setf (cache-table-get id skewer-hosted-scripts)
+			(with-temp-buffer
+			  (insert-file-contents file)
+			  (buffer-string)))
+	  (skewer-eval (format "/skewer/script/%s/%s"
+						   id
+						   file)
+				   (lambda (_) (message "%s loaded" file))
+				   :type type
+				   :extra extra)))
 
   (cl-defun my/skewer-load-file (file &key (type "script") (extra nil))
-    (if (file-exists-p file)
-	(message "loading %s" file)
-      (user-error "This file doesn't exist %s" file))
-    (let ((parent-dir
-	   (file-name-nondirectory
-	    (directory-file-name default-directory))))
-      (skewer-eval (format "/skewer/%s" file)
-                   (lambda (_) (message "%s loaded" file))
-                   :type type
-		   :extra extra)))
+	(if (file-exists-p file)
+		(message "loading %s" file)
+	  (user-error "This file doesn't exist %s" file))
+	(let ((parent-dir
+		   (file-name-nondirectory
+			(directory-file-name default-directory))))
+	  (skewer-eval (format "/skewer/%s" file)
+				   (lambda (_) (message "%s loaded" file))
+				   :type type
+				   :extra extra)))
 
   (defservlet skewer "text/javascript; charset=UTF-8" (path)
-    (setq path (s-chop-prefix "/skewer/" path))
-    (message "getting %s" path)
-    (if (and path (file-exists-p path))
-	(insert-file-contents path)
-      (insert "")))
+	(setq path (s-chop-prefix "/skewer/" path))
+	(message "getting %s" path)
+	(if (and path (file-exists-p path))
+		(insert-file-contents path)
+	  (insert "")))
 
   (defun httpd/skewer.js (proc &rest args)
-    (with-httpd-buffer proc "text/javascript; charset=UTF-8"
-      (message "skewer.js loaded")
-      (insert-file-contents (expand-file-name "skewer.js" skewer-data-root))
-      (goto-char (point-max))
-      (run-hooks 'skewer-js-hook)))
+	(with-httpd-buffer proc "text/javascript; charset=UTF-8"
+	  (message "skewer.js loaded")
+	  (insert-file-contents (expand-file-name "skewer.js" skewer-data-root))
+	  (goto-char (point-max))
+	  (run-hooks 'skewer-js-hook)))
 
   ;; (defun httpd/skewer/buffer (proc path &rest args)
   ;;   (with-httpd-buffer proc "text/javascript; charset=UTF-8"
   ;;     (setq path (s-chop-prefix "/skewer/buffer" path))
   ;;     (let ((buf (get-buffer path)))
   ;; 	(if buf
-  ;; 	    (insert-buffer buf)
+  ;; 		(insert-buffer buf)
   ;; 	  (insert ""))
   ;; 	(if buf
-  ;; 	    (message "got buffer %s" path)
+  ;; 		(message "got buffer %s" path)
   ;; 	  (message "buffer %s not found" path)))))
 
   (cl-defun skewer-load-file (&optional file &key (type "script") (extra nil))
-    (interactive (list (buffer-file-name)))
-    (if (not (file-exists-p file))
-	(message "This file doesn't exist %s" file)
-      (message "loading %s" file)
-      (let ((parent-dir
-	     (file-name-nondirectory
-	      (directory-file-name default-directory))))
-	(skewer-eval (format "/skewer/file/%s" file)
-                     (lambda (_) (message "%s loaded" file))
-                     :type type
-		     :extra extra))))
-  
+	(interactive (list (buffer-file-name)))
+	(if (not (file-exists-p file))
+		(message "This file doesn't exist %s" file)
+	  (message "loading %s" file)
+	  (let ((parent-dir
+			 (file-name-nondirectory
+			  (directory-file-name default-directory))))
+		(skewer-eval (format "/skewer/file/%s" file)
+					 (lambda (_) (message "%s loaded" file))
+					 :type type
+					 :extra extra))))
+
   (defun httpd/skewer/file (proc path &rest args)
-    (with-httpd-buffer proc "text/javascript; charset=UTF-8"
-      (setq path (s-chop-prefix "/skewer/file/" path))
-      (message "getting %s" path)
-      (if (and path (file-exists-p path))
-	  (insert-file-contents path)
-	(insert "")))))
+	(with-httpd-buffer proc "text/javascript; charset=UTF-8"
+	  (setq path (s-chop-prefix "/skewer/file/" path))
+	  (message "getting %s" path)
+	  (if (and path (file-exists-p path))
+		  (insert-file-contents path)
+		(insert "")))))
 
 (add-auto-mode 'js-mode
-               "\\.ja?son$"
-               "\\.pac$"
-               "\\.jshintrc$")
+			   "\\.ja?son$"
+			   "\\.pac$"
+			   "\\.jshintrc$")
 (add-auto-mode 'rjsx-mode "\\.tsx\\'")
 
 (add-to-list 'interpreter-mode-alist '("node" . js2-mode))
@@ -494,15 +533,15 @@ using e.g. my/skewer-load-file."
 ;; don't waste time on angular patterns, it's updated too frequently
 (defvar js-common-imenu-regex-list
   `(("Variable" ,(format "^[ \t]*%s[ \t]+\\([a-zA-Z0-9_$.]+\\)[ \t]*="
-                         (rx (or "let" "var" "const")))
-     2)
-    ("Function" "function[ \t]+\\([a-zA-Z0-9_$.]+\\)[ \t]*(" 1)
-    ("Function" "^[ \t]*\\([a-zA-Z0-9_$.]+\\)[ \t]*=[ \t]*function[ \t]*(" 1)
-    ;; {{ es6 beginning
-    ("Function" "^[ \t]*\\([A-Za-z_$][A-Za-z0-9_$]+\\)[ \t]*([a-zA-Z0-9, ]*) *\{ *$" 1) ;; es6 fn1 () { }
-    ("Function" "^[ \t]*\\([A-Za-z_$][A-Za-z0-9_$]+\\)[ \t]*=[ \t]*(?[a-zA-Z0-9, ]*)?[ \t]*=>" 1) ;; es6 fn1 = (e) =>
-    ;; }}
-    ))
+						 (rx (or "let" "var" "const")))
+	 2)
+	("Function" "function[ \t]+\\([a-zA-Z0-9_$.]+\\)[ \t]*(" 1)
+	("Function" "^[ \t]*\\([a-zA-Z0-9_$.]+\\)[ \t]*=[ \t]*function[ \t]*(" 1)
+	;; {{ es6 beginning
+	("Function" "^[ \t]*\\([A-Za-z_$][A-Za-z0-9_$]+\\)[ \t]*([a-zA-Z0-9, ]*) *\{ *$" 1) ;; es6 fn1 () { }
+	("Function" "^[ \t]*\\([A-Za-z_$][A-Za-z0-9_$]+\\)[ \t]*=[ \t]*(?[a-zA-Z0-9, ]*)?[ \t]*=>" 1) ;; es6 fn1 = (e) =>
+	;; }}
+	))
 
 ;; js-mode imenu enhancement
 
@@ -511,10 +550,9 @@ using e.g. my/skewer-load-file."
   (subword-mode 1))
 
 (define-hook-setup 'js-mode-hook :mo
-  (when (and (not (buffer-file-temp-p))
-	     (not (derived-mode-p 'js2-mode)))
-    (my/common-js-setup)
-    (setq imenu-generic-expression js-common-imenu-regex-list)))
+  (unless (derived-mode-p 'js2-mode)
+	(my/common-js-setup)
+	(setq imenu-generic-expression js-common-imenu-regex-list)))
 
 (with-eval-after-load 'js-mode
   ;; '$' is part of variable name like '$item'
@@ -522,13 +560,13 @@ using e.g. my/skewer-load-file."
 
 (with-eval-after-load 'js2-mode
   (define-keys js2-mode-map
-    ;; disable hot keys for elements hiding/showing
-    (kbd "C-c C-e") nil
-    (kbd "C-c C-s") nil
-    (kbd "C-c C-f") nil
-    (kbd "C-c C-t") nil
-    (kbd "C-c C-o") nil
-    (kbd "C-c C-w") nil)
+	;; disable hot keys for elements hiding/showing
+	(kbd "C-c C-e") nil
+	(kbd "C-c C-s") nil
+	(kbd "C-c C-f") nil
+	(kbd "C-c C-t") nil
+	(kbd "C-c C-o") nil
+	(kbd "C-c C-w") nil)
   (setq-default ;; js2-use-font-lock-faces t
    ;; js2-mode-must-byte-compile nil
    ;; {{ comment indention in modern frontend development
@@ -542,31 +580,28 @@ using e.g. my/skewer-load-file."
    js2-bounce-indent-p t)
   (setq-default js2-additional-externs '())
   (define-hook-setup 'js2-mode-hook
-    (unless (buffer-file-temp-p)
-      (my/common-js-setup)
-      ;; if use node.js we need nice output
-      (js2-imenu-extras-mode)
-      (skewer-mode)
-
-      ;; @see https://github.com/mooz/js2-mode/issues/350
-      ;; (setq forward-sexp-function nil)
-      ))
+	(my/common-js-setup)
+	;; if use node.js we need nice output
+	(js2-imenu-extras-mode)
+	(skewer-mode)
+	;; @see https://github.com/mooz/js2-mode/issues/350
+	(setq forward-sexp-function nil))
   ;; }}
 
   ;; @see https://github.com/felipeochoa/rjsx-mode/issues/33
   (with-eval-after-load 'rjsx-mode
-    ;; (define-key rjsx-mode-map "<" nil)
-    ))
+	;; (define-key rjsx-mode-map "<" nil)
+	))
 
 ;; Latest rjsx-mode does not have indentation issue
 ;; @see https://emacs.stackexchange.com/questions/33536/how-to-edit-jsx-react-files-in-emacs
 
 (use-package typescript-mode :ensure t :defer t
-  :config 
+  :config
   (define-hook-setup 'typescript-mode-hook
-    (setq imenu-generic-expression js-common-imenu-regex-list)))
+	(setq imenu-generic-expression js-common-imenu-regex-list)))
 
-;;; Python 
+;;; Python
 
 ;; @see https://github.com/jorgenschaefer/elpy/issues/1729#issuecomment-880045698
 ;; Fix exit abnormally with code 1
@@ -583,24 +618,26 @@ using e.g. my/skewer-load-file."
   (setq elpy-disable-backend-error-display nil)
   (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
   (setq elpy-rpc-python-command "python3")
-  
-  (define-keys elpy-mode-map
-    (kbd "C-c C-c") nil
-    [C-return] nil))
 
-;;; ocaml 
+  (define-keys elpy-mode-map
+	(kbd "C-c C-c") nil
+	[C-return] nil))
+
+;;; ocaml
 (use-package tuareg :ensure t
+  :disabled
   :defer t
   :config
-  (defalias 'ocaml-mode 'tuareg-mode))
+  (defalias 'ocaml-mode 'tuareg-mode)
+  :init
 
-(use-package merlin :ensure t
-  :hook (tuareg-mode . merlin-mode))
+  (use-package merlin :ensure t
+	:hook (tuareg-mode . merlin-mode))
 
-(use-package merlin-eldoc :ensure t
-  :after tuareg
-  :defer t
-  :hook (tuareg-mode . merlin-eldoc-setup))
+  (use-package merlin-eldoc :ensure t
+	:after tuareg
+	:defer t
+	:hook (tuareg-mode . merlin-eldoc-setup)))
 
 (use-package python :ensure t
   :defer t
@@ -608,11 +645,11 @@ using e.g. my/skewer-load-file."
   ;; :interpreter ("python" . python-mode)
   :config
   (add-to-list 'process-coding-system-alist '("python" . (utf-8 . utf-8)))
- 
+
   (setq python-indent-offset 4
 		python-indent-guess-indent-offset nil ; no don't please
 		python-forward-sexp-function #'python-nav-forward-sexp)
-  
+
   ;; http://emacs.stackexchange.com/questions/3322/python-auto-indent-problem/3338#3338
   ;; emacs 24.4+
   ;; (setq electric-indent-chars (delq ?: electric-indent-chars))
@@ -625,24 +662,25 @@ using e.g. my/skewer-load-file."
 			   (forward-sexp)
 			   (backward-sexp)
 			   (eval (sexp-at-point)))))
-    (pop-to-buffer (get-buffer-create "*sierpinksi*"))
-    (fundamental-mode)
-    (erase-buffer)
-    (svg-insert-image svg))
+	(pop-to-buffer (get-buffer-create "*sierpinksi*"))
+	(fundamental-mode)
+	(erase-buffer)
+	(svg-insert-image svg))
   (image-mode))
 
 (defun toggle-elsvg ()
   "Toggle elsvg."
   (interactive)
   (if (memq 'elsvg-update-svg-buffer-on-save after-save-hook)
-      (remove-hook 'after-save-hook 'elsvg-update-svg-buffer-on-save)
-    (add-hook 'after-save-hook 'elsvg-update-svg-buffer-on-save 1 t)
-    (elsvg-update-svg-buffer-on-save)))
+	  (remove-hook 'after-save-hook 'elsvg-update-svg-buffer-on-save)
+	(add-hook 'after-save-hook 'elsvg-update-svg-buffer-on-save 1 t)
+	(elsvg-update-svg-buffer-on-save)))
 
 (use-package verilog-mode
   :config
   (setq verilog-indent-lists nil
 		verilog-auto-lineup 'all
+		verilog-auto-newline nil		; no newline after semicolons.
 		verilog-tool 'verilog-simulator
 		verilog-simulator "vvp"
 		verilog-compiler "iverilog")
@@ -655,6 +693,11 @@ using e.g. my/skewer-load-file."
 				 'verilog-simulator
 			   (user-error "Unknown prefix-arg %s" arg)))))
 	  (verilog-set-compile-command))))
+
+(use-package vhdl-mode
+  :after flycheck
+  :config
+  (setq flycheck-ghdl-language-standard "08"))
 
 (provide 'init-prog-modes)
 ;;; init-prog-modes.el ends here

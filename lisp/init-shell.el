@@ -4,32 +4,111 @@
 
 ;; {{ @see https://coredumped.dev/2020/01/04/native-shell-completion-in-emacs/
 (with-eval-after-load 'shell
-  (defun my/kill-process-buffer-when-exit (process event)
-    "Kill buffer of PROCESS when it's terminated.
-EVENT is ignored."
-    (ignore event)
-    (when (memq (process-status process) '(signal exit))
-      (kill-buffer (process-buffer process))))
   ;; Enable auto-completion in `shell'.
-  (native-complete-setup-bash))
+  (native-complete-setup-bash)
+  (define-key shell-mode-map [?\C-w] 'backward-kill-word)
 
-(define-hook-setup 'shell-mode-hook
-  "Set up `shell-mode'."
-  ;; hook `completion-at-point', optional
-  (add-hook 'completion-at-point-functions #'native-complete-at-point nil t)
-  ;; `company-native-complete' is better than `completion-at-point'
-  (setq-local company-backends '((company-files company-native-complete)))
-  ;; try to kill buffer when exit shell
-  (let* ((proc (get-buffer-process (current-buffer)))
-	 (shell (file-name-nondirectory (car (process-command proc)))))
-    ;; Don't waste time on dumb shell which `shell-write-history-on-exit' is binding to
-    (unless (string-match shell-dumb-shell-regexp shell)
-      (set-process-sentinel proc #'my/kill-process-buffer-when-exit))))
+  (add-hook 'shell-mode-hook 'shell-mode-hook-setup)
+  (defun shell-mode-hook-setup ()
+	"Set up `shell-mode'."
+	(setq-local comint-process-echoes t)
+	;; hook `completion-at-point', optional
+	(add-hook 'completion-at-point-functions
+			  #'native-complete-at-point nil t)))
 ;; }}
 
-;; {{ @see http://emacs-journey.blogspot.com.au/2012/06/improving-ansi-term.html
-;; TODO - see if process buffer would exit without this advice
-;; (advice-add 'term-sentinel :after #'my/kill-process-buffer-when-exit)
+(setq eshell-scroll-to-bottom-on-input 'all
+	  ;; this can be annoying, when a process is running in eshell
+	  ;; all key presses are sent to that, instead of being recognized
+	  eshell-send-direct-to-subprocesses nil)
+
+(with-eval-after-load 'eshell
+  (autoload 'time-stamp-string "time-stamp.el")
+  ;; When was prompt prompted? Inspired from:
+  ;; https://redandblack.io/blog/2020/bash-prompt-with-updating-time/
+  (setq eshell-prompt-function
+		(lambda ()
+		  (concat
+		   ;; "\n"							; to increase readability
+		   "┌─"
+		   (propertize (time-stamp-string "%H:%M ") 'face 'bold)
+		   (abbreviate-file-name (eshell/pwd))
+		   "\n"
+		   (if (= (user-uid) 0)
+			   " # "
+			 (format "└─%s $ "
+					 (if (= eshell-last-command-status 0)
+						 (propertize "√" 'face 'success)
+					   (propertize (format "?%d" eshell-last-command-status)
+								   'face 'error)))))))
+  (setq eshell-list-files-after-cd t	; ls after cd
+		eshell-prefer-lisp-functions nil)
+  ;; aliases should be defined in:
+  ;; `eshell-aliases-file'
+  ;; "/Users/xception/.emacs.d/eshell/alias"
+  (with-eval-after-load 'esh-mode
+	(define-keys eshell-mode-map
+	  [?\M-q] 'quit-window
+	  [?\C-l] 'eshell/clear
+	  [?\C-c ?l] (lambda () (interactive)
+				   (eshell/clear :scrollback)
+				   (eshell-send-input))
+	  [?\C-w] 'backward-delete-word))
+
+  ;; eshell/tomp3 complains:
+  ;; no catch for 'eshell-replace-command
+  (defun tomp3 (&rest args)
+	(let* ((args (eshell-stringify-list
+				  (flatten-tree args)))
+		   (audio-file-in (car args))
+		   (audio-file-out
+			(or (cadr args)
+				(concat (file-name-base audio-file-in)
+						".mp3"))))
+	  (unless (file-exists-p audio-file-in)
+		(user-error "tomp3: \"%s\" not found"
+					audio-file-in))
+	  (when (file-exists-p audio-file-out)
+		(user-error "tomp3: audio file out, (below) already exist\n%s"
+					audio-file-out))
+	  (throw 'eshell-replace-command
+			 (eshell-parse-command
+			  "*ffmpeg"
+			  (list
+			   "-i" audio-file-in
+			   "-vn" "-ar" "48000" "-ac" "2" "-b:a" "256"
+			   audio-file-out)))))
+
+  ;; inspired by
+  ;; https://www.reddit.com/r/emacs/comments/x4duoi/comics_in_emacs_eshell/
+  (defun eshell/image (&rest args)
+	"Display image in eshell with ARGS.
+Note: ensure comic images live in `wizardzines-comics-path', named with
+command name and no extension."
+	(require 'iimage)
+	(eshell-eval-using-options
+	 "image" args
+	 '((?h "help" nil nil "show this usage screen")
+	   ;; :external "ecomic"
+	   :show-usage
+	   :usage "COMMAND
+
+Show COMMAND images within eshell buffer")
+	 (let* ((command (nth 0 (eshell-stringify-list (eshell-flatten-list args))))
+			(image-fpath (concat default-directory command)))
+	   (unless (file-exists-p image-fpath)
+		 (user-error "image: \"%s\" not found :-(" command))
+	   ;; (eshell-buffered-print "\n")
+	   (add-text-properties 0 (length image-fpath)
+							`(display
+							  ,(create-image
+								image-fpath nil nil
+								:max-width (* 7 (window-width)))
+							  modification-hooks
+							  (iimage-modification-hook))
+							image-fpath)
+	   (eshell-buffered-print image-fpath)
+	   (eshell-flush)))))
 
 (with-eval-after-load 'term
   ;; utf8
@@ -37,22 +116,16 @@ EVENT is ignored."
     ;; "Ensure the ansi-term has the utf8 encoding."
     (set-buffer-process-coding-system 'utf-8-unix 'utf-8-unix))
   (add-hook 'term-exec-hook #'my/term-use-utf8))
-;; }}
 
-;; {{ comint-mode
 (with-eval-after-load 'comint
   ;; Don't echo passwords when communicating with interactive programs:
   ;; Github prompt is like "Password for 'https://user@github.com/':"
-  (setq comint-password-prompt-regexp
-        (format "%s\\|^ *Password for .*: *$" comint-password-prompt-regexp)
-        comint-prompt-read-only t)
+  ;; (setq comint-password-prompt-regexp
+  ;; 		(format "%s\\|^ *Password for .*: *$" comint-password-prompt-regexp))
+  (setq comint-prompt-read-only t)
   (define-key comint-mode-map
-    ;; look up shell command history
-    ;; (kbd "M-n") #'counsel-shell-history
     ;; Don't show trailing whitespace in REPL.
-    (kbd "M-;") #'comment-dwim)
-  (add-hook 'comint-output-filter-functions #'comint-watch-for-password-prompt))
-;; }}
+    (kbd "M-;") #'comment-dwim))
 
 (with-eval-after-load 'gdb-mi
   (define-key gdb-inferior-io-mode-map "q" 'quit-window)
@@ -60,15 +133,27 @@ EVENT is ignored."
   (add-hook 'gud-mode-hook 'ansi-color-for-comint-mode-on))
 
 (use-package vterm :ensure nil
+  :load-path"~/.emacs.d/site-lisp/emacs-libvterm/"
   :config
-  (add-to-list 'vterm-eval-cmds '("quick-view" posframe-quick-view-file))
+  ;; (add-to-list 'vterm-eval-cmds '("quick-view" posframe-quick-view-file))
   (setq vterm-environment (list (format "EMACS_PATH=%s" (file-truename user-emacs-directory))))
 
   ;; setting these keys to nil to allow them to function normally
+  (define-key vterm-copy-mode-map
+	[?\M-w] #'vterm-copy-mode-done)
+
   (define-keys vterm-mode-map
     [?\C-\M-b] 'vterm-send-key-interactive
     [?\C-\M-f] 'vterm-send-key-interactive
+	[?\C-x ?\C-f] nil
+	;; (lambda () (interactive)
+	;;   (vterm-send "C-a")
+	;;   (vterm-send "C-k")
+	;;   (vterm-send-string "cd ")
+	;;   (vterm-send-string
+	;;    (file-name-directory (read-file-name "File: "))))
     [remap undo] 'vterm-undo
+	;; free the following key
     [?\M->] nil
     [?\M-w] nil
     [?\C-s] nil)
@@ -86,12 +171,14 @@ EVENT is ignored."
 					(not (string-match-p "org" name))
 					(with-current-buffer it
 					  (eq major-mode 'vterm-mode))))
-			 (buffer-list)))
-			 (vterm-buffer
-			  (cond ((null vterm-buffers) (user-error "No vterm buffer alive"))
-					((null (cdr vterm-buffers)) (car vterm-buffers))
-					(:else (completing-read "Vterm: "
-											(mapcar 'buffer-name vterm-buffers))))))
+			 (buffer-list)))
+		   (vterm-buffer
+			(cond ((null vterm-buffers)
+				   (user-error "No vterm buffer alive"))
+				  ((null (cdr vterm-buffers)) (car vterm-buffers))
+				  (:else
+				   (completing-read "Vterm: "
+									(mapcar 'buffer-name vterm-buffers))))))
       (pop-to-buffer vterm-buffer)
       (vterm-send-string "cd ")
       (vterm-send-string directory)
@@ -114,6 +201,56 @@ EVENT is ignored."
 			(defun vterm-mode-setup ()
 			  (vterm-send-string
 			   "source $EMACS_PATH/etc/emacs-vterm-zsh.sh\n"))))
+
+(defun open-shell ()
+  "Interface for skhd integration."
+  (interactive)
+  ;; Not using as this forces pop-to-buffer-same-window
+  ;; (eshell)
+  (message "prefix-arg: %s" prefix-arg)
+  (let* ((win (selected-window))
+		 (dir (with-current-buffer (window-buffer win)
+				default-directory))
+		 (buf (get-buffer-create eshell-buffer-name)))
+	(pop-to-buffer buf)
+	(when prefix-arg
+	  ;; ls after cd complains since this is not interactive
+	  (ignore-error 'error (eshell/cd dir))
+	  ;; refresh prompt
+	  (eshell-send-input)
+	  (setq prefix-arg nil))))
+
+(defun my/shell-cd (directory)
+  (interactive
+   (list (let ((arg current-prefix-arg))
+		   (cond ((null arg) default-directory)
+				 ((listp arg) (read-directory-name ""))
+				 (:else (user-error "Unexpcted prefix arg %s" arg))))))
+  ;; eshell-mode
+  (with-current-buffer (open-shell)
+	(insert "cd " directory)
+	(pcase major-mode
+	  ('eshell-mode (eshell-send-input))
+	  ('shell-mode (comint-send-input)))))
+
+(use-package xterm-color :ensure t
+  :disabled
+  :defer t
+  :init
+  ;; (remove-hook 'shell-mode-hook 'shell-mode-hook@xterm-color)
+  (add-hook
+   'shell-mode-hook
+   (defun shell-mode-hook@xterm-color ()
+	 (setq-local corfu-auto nil)
+	 (setq-local comint-output-filter-functions
+				 (remove 'ansi-color-process-output
+						 comint-output-filter-functions))
+	 ;; Disable font-locking in this buffer to improve performance
+     (font-lock-mode -1)
+     ;; Prevent font-locking from being re-enabled in this buffer
+     (make-local-variable 'font-lock-function)
+     (setq font-lock-function (lambda (_) nil))
+     (add-hook 'comint-preoutput-filter-functions 'xterm-color-filter nil t))))
 
 (provide 'init-shell)
 ;;; init-shell.el ends here

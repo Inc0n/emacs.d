@@ -34,7 +34,7 @@ Also remove buffers whose binding files already merged in `buffer-list'."
         ;; back to original window
         (select-window w))))
 
-  (util/ensure 'ediff)
+  (require 'ediff)
 
   ;; @see https://stackoverflow.com/a/29757750/245363
   (defun ediff-copy-both-to-C (&optional arg)

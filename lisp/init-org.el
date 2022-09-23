@@ -40,10 +40,9 @@
 				 font-latex-math-face
 				 font-latex-string-face))))
 
-
 (use-package flycheck-languagetool :ensure t
   :init
-  (setq flycheck-languagetool-server-jar "/opt/homebrew/Cellar/languagetool/5.7/libexec/languagetool-server.jar")
+  (setq flycheck-languagetool-server-jar "/opt/homebrew/opt/languagetool/libexec/languagetool-server.jar")
   (setq flycheck-checker-error-threshold nil))
 
 (add-hook 'org-mode-hook 'org-mode-hook-setup)
@@ -53,13 +52,12 @@
   (setq-local fill-prefix "")
   (if (buffer-too-big-p)
       (progn
-        ;; yes disable this
-        (font-lock-mode -1)
+        (font-lock-mode -1)				; yes disable this
         (when (y-or-n-p "Turn on so long minor mode?")
           (turn-on-so-long-minor-mode)))
     (org-appear-mode 1)
     (org-superstar-mode 1)
-    (org-modern-mode 1)
+    (org-modern-mode -1)
     (flycheck-languagetool-setup)
     (setq prettify-symbols-alist
           (append prettify-symbols-alist
@@ -73,8 +71,6 @@
     ;; (prettify-symbols-mode 1)
     ;; (org-fragtog-mode 1)
     (setq my/flyspell-check-doublon nil))
-  (when (bound-and-true-p evil-mode)
-    (evil-normal-state 1))
   (setq-local truncate-lines nil)
   (setq-local electric-pair-inhibit-predicate
               (lambda (char)
@@ -89,7 +85,7 @@
   ;; org-startup-options
   (setq org-startup-with-latex-preview nil
         org-startup-indented t
-        org-startup-folded t
+        org-startup-folded 'show2levels
 		org-hide-leading-stars nil
         org-pretty-entities t)
   ;; org
@@ -158,7 +154,7 @@
     (if (executable-find "dvisvgm")
         (setq org-preview-latex-default-process 'dvisvgm)
       (warn "Install dvisvgm with tlmgr for better rendering on osx Emacs org latex fragment")))
-  
+
   ;; org visuals
   (setq org-fontify-todo-headline t
         org-fontify-done-headline t
@@ -199,15 +195,15 @@
   (require 'org-tempo)
 
   (custom-set-faces
-   '(org-document-title ((t (:height 1.2))))
-   '(org-level-1 ((t (:height 1.2 :inherit outline-1))))
-   '(org-level-2 ((t (:height 1.15 :inherit outline-2))))
-   '(org-level-3 ((t (:height 1.12 :inherit outline-3))))
-   '(org-level-4 ((t (:height 1.09 :inherit outline-4))))
-   '(org-level-5 ((t (:height 1.06 :inherit outline-5))))
-   '(org-level-6 ((t (:height 1.03 :inherit outline-6))))
-   '(org-level-7 ((t (:height 1.03 :inherit outline-7))))
-   '(org-level-8 ((t (:inherit outline-8)))))
+   '(org-document-title ((t :height 1.2)))
+   '(org-level-1 ((t :height 1.2 :inherit outline-1)))
+   '(org-level-2 ((t :height 1.15 :inherit outline-2)))
+   '(org-level-3 ((t :height 1.12 :inherit outline-3)))
+   '(org-level-4 ((t :height 1.09 :inherit outline-4)))
+   '(org-level-5 ((t :height 1.06 :inherit outline-5)))
+   '(org-level-6 ((t :height 1.03 :inherit outline-6)))
+   '(org-level-7 ((t :height 1.03 :inherit outline-7)))
+   '(org-level-8 ((t :inherit outline-8))))
 
   (defun my/latex-auto-ref-link-export (path _desc backend channel)
     "Exporting link using autoref of PATH for latex BACKEND."
@@ -217,9 +213,26 @@
 		  (t (message "unknown backend %s for path: %s" backend path))))
 
   ;; setup lst: and table: for \autoref
-  (org-link-set-parameters "autoref"
-						   :export 'my/latex-auto-ref-link-export
-						   :follow 'org-link-search))
+  (org-link-set-parameters
+   "autoref"
+   :export #'my/latex-auto-ref-link-export
+   :follow #'org-link-search)
+
+  (org-link-set-parameters
+   "imghttps"
+   :image-data-fun #'org-cache-https-image)
+
+  ;; TODO: implement caching on chosen image,
+  ;; find consistant image path ixdimg? same as latex?
+  (defun org-cache-https-image ()
+	(let ((buf
+		   (or (url-retrieve-synchronously
+				(concat (substring protocol 3) ":" link))
+			   (error "Download of image \"%s\" failed" link))))
+      (with-current-buffer buf
+		(goto-char (point-min))
+		(re-search-forward "\r?\n\r?\n")
+		(buffer-substring-no-properties (point) (point-max))))))
 
 (with-eval-after-load 'ob-core
   ;; fix jupyter ANSI color sequence
@@ -252,7 +265,7 @@
         org-src-preserve-indentation t
         org-src-tab-acts-natively t))
 
-(with-eval-after-load 'org-refile 
+(with-eval-after-load 'org-refile
   ;; Refile targets include this file and any file contributing to the agenda - up to 5 levels deep
   (setq org-refile-targets '(("projects.org" :regexp . "\\(?:\\(?:Note\\|Task\\)s\\)")
 			     ("agenda.org" :regexp . "Past"))
@@ -288,38 +301,38 @@
   (add-to-list 'org-capture-mode-hook 'org-capture-prepare-org-capture)
   ;; https://stackoverflow.com/questions/12262220/add-created-date-property-to-todos-in-org-mode
   (setq org-capture-templates
-	`(("t" "Do on date" entry (file+olp+datetree "daily.org")
+		`(("t" "Do on date" entry (file+olp+datetree "daily.org")
            "\* TODO %?\n%t\n%a\n" :time-prompt t :clock-resume t)
           ("T" "Todo" entry (file "todo.org") "* TODO %?")
           ("N" "Next" entry (file "todo.org") "* NEXT %?")
-	  ("n" "Note" entry (file "notes.org") "* Note (%a)\n%?")
-	  ;; ("n" "note" entry (file "note.org")
-	  ;;  "* %? :NOTE:\n%U\n%a\n")
-	  ;; ("d" "Deadline" entry (file+headline "agenda.org" "Deadline")
+		  ("n" "Note" entry (file "notes.org") "* Note (%a)\n%?")
+		  ;; ("n" "note" entry (file "note.org")
+		  ;;  "* %? :NOTE:\n%U\n%a\n")
+		  ;; ("d" "Deadline" entry (file+headline "agenda.org" "Deadline")
           ;; "* NEXT %?\nDEADLINE: %t")
           ("d" "Daily" entry (file+olp+datetree "daily.org") "* TODO %?\n%a\n")
           ("D" "Diary" entry (file+olp+datetree "diary.org") "* %?\n")
-	  ;;  "* %?\n%U\n"
+		  ;;  "* %?\n%U\n"
           ("a" "Analysis" entry (file "analysis.org")
-	   "* TODO %? [%<%Y-%m-%d %a>]\n")
+		   "* TODO %? [%<%Y-%m-%d %a>]\n")
           ("e" "Event" entry (file+headline "agenda.org" "Future")
-	   ,(concat "* %? :event:\n"
-		    "SCHEDULED: <%<%Y-%m-%d %a %H:00>>")
+		   ,(concat "* %? :event:\n"
+					"SCHEDULED: <%<%Y-%m-%d %a %H:00>>")
            :time-prompt t)
           ;; ("r" "Respond" entry (file "agenda.org")
-	  ;;  ,(concat "* NEXT Respond to %:from on %:subject\n"
-	  ;;   		"SCHEDULED: %t\n"
-	  ;;   		"%U\n"
-	  ;;   		"%a\n"))
-	  ("s" "Schedule" entry (file+headline "agenda.org" "Future")
-	   "* %?\nSCHEDULED: %t"
+		  ;;  ,(concat "* NEXT Respond to %:from on %:subject\n"
+		  ;;   		"SCHEDULED: %t\n"
+		  ;;   		"%U\n"
+		  ;;   		"%a\n"))
+		  ("s" "Schedule" entry (file+headline "agenda.org" "Future")
+		   "* %?\nSCHEDULED: %t"
            :time-prompt t)
           ("m" "Meeting" entry  (file+headline "agenda.org" "Future")
-	   ,(concat "* %? :meeting:\n"
-		    "<%<%Y-%m-%d %a %H:00>>"))
-	  ("r" "Rant" entry  (file "notes.org")
-	   "* %T %? :rant:\n" :jump-to-captured t)
-	  ("p" "Project" entry (file+olp+datetree "daily.org")
+		   ,(concat "* %? :meeting:\n"
+					"<%<%Y-%m-%d %a %H:00>>"))
+		  ("r" "Rant" entry  (file "notes.org")
+		   "* %T %? :rant:\n" :jump-to-captured t)
+		  ("p" "Project" entry (file+olp+datetree "daily.org")
            "* PROJECT %?\n"))))
 
 (with-eval-after-load 'org-agenda
@@ -348,11 +361,11 @@
           ("p" "Projects"
            ((todo "PROJECT" ((org-agenda-overriding-header "Projects")))
             (todo "HOLD"    ((org-agenda-overriding-header "Maybe")))))
-	  ("d" "Daily"
-	   (;; (agenda "" ((org-agenda-files
+		  ("d" "Daily"
+		   (;; (agenda "" ((org-agenda-files
             ;;              (concat org-directory "daily.org"))
             ;;             (org-agenda-skip-function
-	    ;;              'org-agenda-skip-if-past-schedule)))
+			;;              'org-agenda-skip-if-past-schedule)))
             (todo "NEXT"
                   ((org-agenda-files
                     `(,(concat org-directory "daily.org")))))
@@ -363,7 +376,7 @@
                   ((org-agenda-files
                     `(,(concat org-directory "daily.org")))))))
           ("b" "buffer summary"
-	   ((agenda "" ((org-agenda-files (list buffer-file-name))))))))
+		   ((agenda "" ((org-agenda-files (list buffer-file-name))))))))
   (setq org-agenda-start-on-weekday nil
         org-agenda-span 14
         ;; org-agenda-include-diary t
@@ -373,7 +386,7 @@
         org-agenda-use-tag-inheritance nil ;; 3-4x speedup
         ;; }}
         org-agenda-tags-column 80
-	org-agenda-window-setup 'current-window))
+		org-agenda-window-setup 'current-window))
 
 (defun my/org-agenda-dates-ago (&optional short-representation)
   "Produce a time ago reference for activated TODOs."
@@ -399,14 +412,18 @@
 (use-package org-modern :ensure t
   :defer t
   :config
-    (set-face-attribute 'org-modern-block-keyword
-		      nil
-		      :weight 'bold
-		      :box '(:line-width 1))
+  (set-face-attribute 'org-modern-block-keyword
+					  nil
+					  :weight 'bold
+					  :box '(:line-width 1))
+  (setq org-modern-footnote nil)		; its bad in table...
+  ;; '(((underline t)
+  ;; 	 (bold t))
+  ;; 	(raise 0.3) (height 1.0))
   :init
-  (setq org-modern-keyword "‣"
+  (setq org-modern-keyword nil		 ; "‣"
         ;; let org-superstar stylize the stars
-	org-modern-list '((43 . "•") (45 . "–") (42 . "◦"))
+		org-modern-list '((43 . "•") (45 . "–") (42 . "◦"))
         org-modern-star nil
         org-modern-hide-stars nil))
 
@@ -438,7 +455,7 @@
                                                   ;; ("PROJECT" . ?Π)
                                                   ("HOLD" . ?⊘)))
   (setq org-superstar-cycle-headline-bullets nil
-	org-superstar-special-todo-items t))
+		org-superstar-special-todo-items t))
 
 ;; ☐☑⦷
 
@@ -453,10 +470,8 @@
          (org-insert-heading-respect-content))
         ((org-at-item-p)
          ;; (if (= (line-beginning-position) (point)))
-	 (if (bound-and-true-p evil-mode)
-	     (evil-move-end-of-line)
-           (end-of-line))
-	 (org-insert-item))
+		 (end-of-line)
+		 (org-insert-item))
         ((not (= (point) (save-excursion
                            (org-up-heading-safe)
                            (point))))
@@ -470,7 +485,6 @@
   "If this function return nil, the current match should not be skipped.
 Otherwise, the function must return a position from where the search
 should be continued."
-  (message "%s" (org-get-todo-state))
   (if (or (member (org-get-todo-state) '("STARTED" "NEXT")))
       ;; return nil mean should not skip
       nil
@@ -631,13 +645,13 @@ It will operate between the region from START to END."
   :after org
   :init
   (setq org-roam-v2-ack t) ;; acknowledge upgrade and remove warning at startup
+  (global-set-key (kbd "C-c r i") 'org-roam-node-insert)
+  (global-set-key (kbd "C-c r c") 'org-roam-node-find)
+  (global-set-key (kbd "C-c r l") 'org-roam-buffer-toggle)
   :config
   (setq org-roam-directory (file-truename "~/sources/org/roam/"))
   (setq org-roam-db-location (concat org-roam-directory "org-roam.db"))
-  (org-roam-setup)
-  (global-set-key (kbd "C-c r i") 'org-roam-node-insert)
-  (global-set-key (kbd "C-c r c") 'org-roam-node-find)
-  (global-set-key (kbd "C-c r l") 'org-roam-buffer-toggle))
+  (org-roam-setup))
 
 
 (with-eval-after-load 'oc

@@ -7,8 +7,8 @@
 
 ;;; mixed-pitch
 
-(local-require 'mixed-pitch)
-
+;; (local-require 'mixed-pitch)
+(autoload #'mixed-pitch-mode "mixed-pitch")
 (autoload #'mixed-pitch-serif-mode "mixed-pitch"
   "Change the default face of the current buffer to a serifed variable pitch, while keeping some faces fixed pitch." t)
 
@@ -17,29 +17,17 @@
     '((t (:family "Merriweather")))
     "A variable-pitch face with serifs."
     :group 'basic-faces)
-  (face-remap-add-relative 'variable-pitch :family
-                           (if (eq system-type 'darwin)
-                               "STFangSong"
-                             "Merriweather"))
-  ;; (face-remap-add-relative 'fixed-pitch-serif :family "Merriweather")
+  ;; (set-face-attribute
+  ;;  'variable-pitch-serif nil :family "STFangSong") ; "Merriweather"
   (setq mixed-pitch-set-height t))
-
-(defun mixed-pitch-serif-mode (&optional arg)
-  "Change the default face of the current buffer to a serifed variable pitch.
-ARG is passed in."
-  (interactive)
-  (let (;; (mixed-pitch-fixed-pitch-faces nil)
-        (mixed-pitch-face 'variable-pitch-serif))
-    (mixed-pitch-mode (or arg 'toggle))))
 
 (setq text-scale-mode-step 1.1)
 ;; (text-scale-set 0)
 
-(setq-default fill-column 80
+(setq-default fill-column 75			; my fonts are bigger
               visual-fill-column-center-text t
-              visual-fill-column-width 80
               ;; Additional margin needed for Unicode text width
-              visual-fill-column-extra-text-width '(0 . 6))
+              visual-fill-column-extra-text-width '(0 . -6))
 
 ;;; writeroom
 
@@ -143,8 +131,7 @@ Otherwise behave as if called interactively."
                                    (prog1 line-spacing--orig
                                      (setq-local line-spacing--orig nil))
                                  (+ line-spacing step)))
-      ;; (unless (zerop step)
-      (message "Use +,-,0 for further adjustment")
+      (message "Use +,-,0 for further adjustment (spacing=%d)" line-spacing)
       (set-transient-map
        (let ((map (make-sparse-keymap)))
          (dolist (mods '(() (control)))
@@ -170,18 +157,6 @@ If OP returns 'forward-line, to forward 1 line."
           (forward-line 1)
         (when (eq (funcall op) 'forward-line)
           (forward-line 1))))))
-
-(defun my/fill-buffer (min max)
-  "Fill buffer line by line from MIN to MAX."
-  (interactive (region-or-min-max-points))
-  (operate-on-each-line
-   min max
-   (lambda ()
-     (fill-region-as-paragraph
-      (line-beginning-position)
-      (line-end-position)
-      'left)
-     'dont-forward)))
 
 (defun ensure-chinese-fill-paragraph (arg min max)
   "Fill buffer line by line from MIN to MAX.
@@ -225,8 +200,6 @@ Argument ARG add two space prefix to paragraph."
                  'forward-line)
              'forward-line)
          'forward-line)))))
-
-(use-package topspace :ensure t :defer t)
 
 ;;; writing
 
@@ -305,31 +278,6 @@ Also converts full stops to commas."
       (insert ?\n))
     (insert str))
   (indent-according-to-mode))
-
-(defun comment-and-copy-line (beg end)
-  "Copy region BEG to END below and comment it.
-Right above if not commented already."
-  (interactive (region-or-line-beg-end-points current-prefix-arg))
-  (let* ((str (buffer-substring-no-properties beg end))
-         (commented (comment-only-p beg end))
-         (point
-          (save-excursion
-            (goto-char end)
-
-            (unless commented
-              (comment-region beg end))
-
-            (unless (s-suffix? "\n" str)
-              (evil-insert-newline-below)
-              (indent-according-to-mode))
-
-            (prog1 (point)
-              (insert str)))))
-    ;; (goto-char point)
-    (goto-char point)
-    (when commented
-      (uncomment-region point
-                        (+ point (length str))))))
 
 (defun backward-delete-word (start end)
   "Delete word or region from START to END.

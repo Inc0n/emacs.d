@@ -12,14 +12,13 @@
   :config
   (setq consult-line-start-from-top nil
 		consult-async-min-input 2)
-  (consult-customize
-   consult-theme
-   consult-buffer
-   consult-grep
-   :preview-key '(:debounce 0.3 any)
-   consult-ripgrep consult-git-grep
-   consult-bookmark consult-recent-file consult-xref
-   :preview-key (kbd "M-."))
+  (consult-customize consult-theme
+					 consult-buffer
+					 consult-grep
+					 :preview-key '(:debounce 0.3 any)
+					 consult-ripgrep consult-git-grep
+					 consult-bookmark consult-recent-file consult-xref
+					 :preview-key (kbd "M-."))
   (setq consult-project-root-function
         (lambda ()
           (when-let (project (project-current))
@@ -28,7 +27,6 @@
 ;; provide annotations in minibuffer
 (use-package marginalia :ensure t
   :defer 1
-  :hook (after-init . marginalia-mode)
   :config
   ;; add notation for variables values
   (defun marginalia-annotate-command-maybe-mode (cand)
@@ -47,7 +45,8 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
        (marginalia--documentation (marginalia--function-doc sym)))))
 
   (add-to-list 'marginalia-annotator-registry
-               '(command marginalia-annotate-command-maybe-mode)))
+               '(command marginalia-annotate-command-maybe-mode))
+  :init (add-hook 'vertico-mode-hook 'marginalia-mode))
 
 ;; Vertico seems to lag when dealing with a very long list
 ;; such as while in describe-functions
@@ -58,14 +57,18 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
   ;; Optionally enable cycling for `vertico-next' and `vertico-previous'.
   ;; (setq vertico-cycle nil)
   ;; Disable dynamic resize, this is too jumpy
-  (setq vertico-resize nil)		; 'grow-only
+  (setq vertico-resize nil)				; 'grow-only
   ;; C-prefix is better since C-n and C-p, better ergonomics
   (define-keys vertico-map
-    (kbd "C-o") 'embark-act		; embark intergration
-    [C-return] #'vertico-exit-input)
-  :init (vertico-mode 1))
+    [?\C-o] nil
+	[?\M-o] #'embark-act				; embark intergration
+    [C-return] #'vertico-exit-input
+	[wheel-up] #'vertico-previous
+	[wheel-down] #'vertico-next)
+  :init (add-hook 'minibuffer-mode-hook 'vertico-mode))
 
 (use-package embark :ensure t
+  :defer t
   :config (define-key embark-file-map "f" 'my/browse-file))
 
 ;; more at
@@ -92,7 +95,7 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
   (add-to-list 'completion-at-point-functions #'cape-tex)
   (add-to-list 'completion-at-point-functions #'cape-dabbrev)
   ;; (cape-super-capf #'cape-ispell #'cape-dabbrev)
-  
+
   ;; (add-to-list 'completion-at-point-functions #'cape-keyword)
   ;; (add-to-list 'completion-at-point-functions #'cape-sgml)
   ;; (add-to-list 'completion-at-point-functions #'cape-rfc1345)
@@ -103,27 +106,100 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
   )
 
 (use-package corfu :ensure t
+  :defer t
   :config
   ;; reset this back to desired configuration
-  (setq-default completion-in-region-function 'consult-completion-in-region)
+  (setq-default completion-in-region-function
+				'consult-completion-in-region)
   (add-hook 'corfu-mode-hook
-	    (lambda () (kill-local-variable 'completion-in-region-function)))
+			(lambda ()
+			  (kill-local-variable 'completion-in-region-function)))
   ;; No need for corfu-complete
   (define-keys corfu-map
 	[remap completion-at-point] nil
+	[remap next-line] nil				; #'corfu-next
+	[remap previous-line] nil			; #'corfu-previous
 	[?\M-d] #'corfu-doc-toggle
-	[?\M-p] #'corfu-doc-scroll-down
-	[?\M-n] #'corfu-doc-scroll-up)
+	;; [?\M-p] #'corfu-doc-scroll-down
+	[?\M-p] #'corfu-previous
+	;; [?\M-n] #'corfu-doc-scroll-up
+	[?\M-n] #'corfu-next)
 
-  :init
-  (use-package corfu-doc :defer t :ensure t)
-  
-  (setq corfu-auto t)
   (setq corfu-auto-delay 0.1)
   (setq corfu-on-exact-match 'insert)
-  (add-hook 'after-init-hook 'global-corfu-mode))
+  ;; integrating corfu and various shell modes
+  (with-eval-after-load 'eshell
+	;; prevent post tab character insertion in eshell
+	;; https://github.com/minad/corfu#completing-in-the-eshell-or-shell
+	;; https://github.com/minad/corfu/issues/204#issuecomment-1186541614
+	(advice-add 'pcomplete-completions-at-point
+				:around #'cape-wrap-purify))
+
+  (defun corfu-send-shell (&rest _)
+	"Send completion candidate when inside comint/eshell."
+	(cond
+	 ((and (derived-mode-p 'eshell-mode) (fboundp 'eshell-send-input))
+      (eshell-send-input))
+	 ((and (derived-mode-p 'comint-mode)  (fboundp 'comint-send-input))
+      (comint-send-input))))
+
+  (advice-add #'corfu-insert :after #'corfu-send-shell)
+  :init
+  (use-package corfu-doc :defer t :ensure t)
+  ;; these need to set before activate corfu
+  (setq corfu-auto t)
+  (add-hook 'emacs-startup-hook 'global-corfu-mode))
+
+(use-package tempo :ensure nil
+  :disabled
+  :config
+  (defvar tempo-tags nil)
+
+  (defun tempo-insert-template-sexp (template-sexp on-region)
+	"Insert a template like `tempo-insert-template' but uses template sexp.
+TEMPLATE is the template to be inserted.  If ON-REGION is non-nil the
+`r' elements are replaced with the current region.  In Transient Mark
+mode, ON-REGION is ignored and assumed true if the region is active."
+	(unwind-protect
+		(progn
+		  (if (or (and transient-mark-mode
+					   mark-active))
+			  (setq on-region t))
+		  (and on-region
+			   (set-marker tempo-region-start (min (mark) (point)))
+			   (set-marker tempo-region-stop (max (mark) (point))))
+		  (if on-region
+			  (goto-char tempo-region-start))
+		  (save-excursion
+			(tempo-insert-mark (point-marker))
+			(mapc (lambda (elt)
+					(tempo-insert elt on-region))
+				  template-sexp)
+			(tempo-insert-mark (point-marker)))
+		  (tempo-forward-mark))
+      (tempo-forget-insertions)
+      (when transient-mark-mode
+		(deactivate-mark))))
+
+  (defun my/tempo-expand-if-complete ()
+	"Expand the tag before point if it is complete.
+Returns non-nil if an expansion was made and nil otherwise."
+	(interactive "*")
+	(let* ((collection (tempo-build-collection))
+		   (match-info (tempo-find-match-string tempo-match-finder))
+		   (match-string (car match-info))
+		   (match-start (cdr match-info))
+		   (exact (assoc match-string collection)))
+      (if exact
+		  (progn
+			(delete-region match-start (point))
+			(tempo-insert-template (cdr exact) nil)
+			t)
+		nil)))
+  tempo-expand-if-complete)
 
 (use-package tempel :ensure t
+  :defer t
   :config
   (define-keys tempel-map
     [?\C-n] 'tempel-next
@@ -140,7 +216,7 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
 	;; define template on save
 	;; MAYBE save template to config file
 	'TODO)
-  
+
   (setq tempel-path (my/emacs-d "tempel-templates.el"))
   (defun tempel-define-template (modes name exp)
     (pcase-let* ((modes (if (listp modes) modes
@@ -196,7 +272,7 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
     ;; should also configure `tempel-trigger-prefix', such that Tempel
     ;; does not trigger too often when you don't expect it. NOTE: We add
     ;; `tempel-expand' *before* the main programming mode Capf, such
-    ;; that it will be tried first.
+    ;; That it will be tried first.
     (setq-local completion-at-point-functions
 				(cons #'tempel-expand completion-at-point-functions)))
   (add-hook 'prog-mode-hook 'tempel-setup-capf)
@@ -233,6 +309,7 @@ To avoid lag, it does not match if length is more than 2000."
 
 ;; it has other scoring/sorting backends such as fzf
 (use-package fussy :ensure t :defer t
+  ;; flx, a package
   ;; flx-strings-cache can be 87.6MiB
   ;; flx-file-cache 0.886 MiB
   :disabled
@@ -251,17 +328,6 @@ Use `orderless' for filtering by passing STRING, TABLE and PRED to
 			  pattern prefix))))
   (setq fussy-filter-fn 'fussy-filter-orderless
 		fussy-score-fn 'flx-score))
-
-(use-package fzf-native
-  :straight
-  (:repo "dangduc/fzf-native"
-   :host github
-   :files (:defaults "*.c" "*.h" "*.txt"))
-  :init
-  (setq fzf-native-always-compile-module t)
-  (setq fzf-native-module-cmake-args "-DCMAKE_C_FLAGS='-O3'")
-  :config
-  (fzf-native-load-own-build-dyn))
 
 (defun completing-swiper ()
   "My swiper, which also can record macro at end of search."

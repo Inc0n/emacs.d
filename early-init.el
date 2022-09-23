@@ -12,13 +12,13 @@
 (setq package-enable-at-startup t)
 
 (setq default-frame-alist
-      `((tool-bar-lines . 0)
-        (menu-bar-lines . ,(if (display-graphic-p) 1 0))
-        ,(or (and (find-font (font-spec :name "Fira Code"))
-		  '(font . "Fira Code"))
-	     '(font . "Menlo"))))
+      `((tool-bar-lines . 0) 			; (tool-bar-mode -1)
+        (menu-bar-lines . 1)			; (menu-bar-mode 1)
+		(horizontal-scroll-bar-mode . nil) ; (horizontal-scroll-bar-mode -1)
+		))
+(scroll-bar-mode 1)
 
-(set-face-attribute 'default t :height 130)
+(set-face-attribute 'default nil :height 140)
 
 (setq use-file-dialog nil)
 (setq use-dialog-box nil)
@@ -33,13 +33,8 @@
 ;; Show a marker in the left fringe for lines not in the buffer
 (setq indicate-unused-lines nil)
 
-(tool-bar-mode -1)
-(scroll-bar-mode -1)
-(horizontal-scroll-bar-mode -1)
-(menu-bar-mode 1)
-
 ;; transparency setup
-;; (set-frame-parameter (selected-frame) 'alpha '(85 . 50))
+;; (set-frame-parameter (selected-frame) 'alpha '95)
 ;; (add-to-list 'default-frame-alist '(alpha . (85 . 50)))
 
 (defun show-scratch-buffer-message ()
@@ -59,12 +54,10 @@
               " - Emacs loves you!\n\n"))))
 
 (setq initial-scratch-message (show-scratch-buffer-message))
-(setq initial-buffer-choice "~/sources/org/chinese/学.org")
-;; (lambda ()
-;;   (let ((org-agenda-window-setup
-;; 		 'Only-window))
-;; 	(org-agenda nil "n")
-;;     (current-buffer)))
+(setq initial-buffer-choice (lambda ()
+							  (dashboard-setup-startup-hook)
+							  (or (get-buffer dashboard-buffer-name)
+								  (get-buffer "*scratch*"))))
 
 (provide 'early-init)
 ;;; early-init.el ends here

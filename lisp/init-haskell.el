@@ -1,20 +1,12 @@
-;; -*- coding: utf-8; lexical-binding: t; -*-
+;;; init-haskell --- -*- coding: utf-8; lexical-binding: t; -*-
+
+;;; Commentary:
+;;; 09/20/22 switch to language server (eglot) from tags
 
 ;;; Code:
+
 (require-package 'haskell-mode)
 (require-package 'elm-mode)
-
-(custom-set-variables
- ;; '(haskell-interactive-types-for-show-ambiguous nil)
- '(haskell-interactive-mode-hide-multi-line-errors nil)
- '(haskell-process-log t)
- '(haskell-process-type 'cabal-repl) ;; 'ghci
- '(haskell-process-suggest-remove-import-lines t)
- '(haskell-tags-on-save t)
- '(haskell-svg-render-images t)
- '(haskell-hasktags-path (expand-file-name "~/.cabal/bin/hasktags")))
-
-;; (setq haskell-interactive-mode-eval-mode 'haskell-mode)
 
 (defun haskell-interactive-toggle-print-mode ()
   (interactive)
@@ -28,10 +20,9 @@
                             "org-mode")))))
 
 (define-hook-setup 'haskell-mode-hook
-  "My `haskell-mode' setup."
+  "`haskell-mode' setup."
   ;; Haskell smarter completion
   ;; @see http://haskell.github.io/haskell-mode/manual/latest/Completion-support.html#Completion-support
-  (add-to-list 'company-backends '(company-capf company-dabbrev-code))
   ;; (rainbow-delimiters-mode 1)
 
   ;; Haskell module auto insert template
@@ -50,12 +41,34 @@
   ;;  "t" 'haskell-process-do-type
   ;;  "i" 'haskell-process-do-info
   ;;  "l" 'haskell-process-load-file)
-  ;; (evil-define-key 'insert haskell-mode-map (kbd "M-.") nil)
-  )
+  ;; (define-key haskell-mode-map (kbd "M-.") nil)
+  (defun haskell-interactive-mode-eval-region (start end)
+	(interactive "r")
+	(haskell-process-send-string
+	 (haskell-interactive-process)
+     (buffer-substring start end))
+	;; haskell-interactive-mode-run-expr
+	)
+
+  (setq haskell-interactive-mode-eval-mode 'haskell-mode
+		haskell-interactive-mode-hide-multi-line-errors nil
+		;; haskell-interactive-types-for-show-ambiguous nil
+		haskell-process-log nil
+		haskell-process-type 'auto ;; 'ghci
+		haskell-process-suggest-remove-import-lines t
+		haskell-svg-render-images t))
 
 ;; interactive Haskell
 ;; start the repl 'haskell-interactive-bring
 ;; load the file 'haskell-process-load-or-reload
+
+(use-package dante
+  :ensure t
+  :after haskell-mode
+  :commands 'dante-mode
+  :init
+  ;; (remove-hook 'flymake-diagnostic-functions 'flymake-proc-legacy-flymake)
+  (add-hook 'haskell-mode-hook 'dante-mode))
 
 ;; @see http://haskell.github.io/haskell-mode/manual/latest/REPL.html#REPL
 ;; 'run-haskell
@@ -68,3 +81,4 @@
   (setq elm-indent-offset 2))
 
 (provide 'init-haskell)
+;;; init-haskell.el ends here

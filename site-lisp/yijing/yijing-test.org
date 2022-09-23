@@ -151,4 +151,209 @@ note: add overflow="visible", if svg clips.
     (x . "60%")
     (y . "0%")))))
 #+end_example
+* apple
+#+begin_src emacs-lisp :results pp
+(gua--svg-yaos (gua-binary->internal "110000") 75.0 100.0)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+((svg
+  ((fill . "#111")
+   (x . 0)
+   (y . "0%")
+   (width . "100%")
+   (height . "10%"))
+  (rect
+   ((width . 30.0)
+	(height . 100.0)
+	(x . 0)
+	(y . 0)))
+  (rect
+   ((width . 30.0)
+	(height . 100.0)
+	(x . 45.0)
+	(y . 0))))
+ (svg
+  ((fill . "#111")
+   (x . 0)
+   (y . "17%")
+   (width . "100%")
+   (height . "10%"))
+  (rect
+   ((width . 30.0)
+	(height . 100.0)
+	(x . 0)
+	(y . 0)))
+  (rect
+   ((width . 30.0)
+	(height . 100.0)
+	(x . 45.0)
+	(y . 0))))
+ (svg
+  ((fill . "#111")
+   (x . 0)
+   (y . "35%")
+   (width . "100%")
+   (height . "10%"))
+  (rect
+   ((width . 30.0)
+	(height . 100.0)
+	(x . 0)
+	(y . 0)))
+  (rect
+   ((width . 30.0)
+	(height . 100.0)
+	(x . 45.0)
+	(y . 0))))
+ (svg
+  ((fill . "#111")
+   (x . 0)
+   (y . "53%")
+   (width . "100%")
+   (height . "10%"))
+  (rect
+   ((width . 30.0)
+	(height . 100.0)
+	(x . 0)
+	(y . 0)))
+  (rect
+   ((width . 30.0)
+	(height . 100.0)
+	(x . 45.0)
+	(y . 0))))
+ (svg
+  ((fill . "#f10")
+   (x . 0)
+   (y . "70%")
+   (width . "100%")
+   (height . "10%"))
+  (rect
+   ((width . 75.0)
+	(height . 100.0)
+	(x . 0)
+	(y . 0))))
+ (svg
+  ((fill . "#f10")
+   (x . 0)
+   (y . "88%")
+   (width . "100%")
+   (height . "10%"))
+  (rect
+   ((width . 75.0)
+	(height . 100.0)
+	(x . 0)
+	(y . 0)))))
+#+end_example
+* another
+#+begin_src emacs-lisp :results pp
+;; (plist-get (cdr (gua-svg )) :data)
+(gua--svg "震" 75 100)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+(svg
+ ((width . 75)
+  (height . 100)
+  (version . "1.1")
+  (xmlns . "http://www.w3.org/2000/svg")
+  (xmlns:xlink . "http://www.w3.org/1999/xlink")
+  (fill . "#fff"))
+ (g
+  ((transform . ""))
+  (svg
+   ((fill . "#111")
+	(x . 0)
+	(y . "0%")
+	(width . "100%")
+	(height . "10%"))
+   (rect
+	((width . 30.0)
+	 (height . 100)
+	 (x . 0)
+	 (y . 0)))
+   (rect
+	((width . 30.0)
+	 (height . 100)
+	 (x . 45.0)
+	 (y . 0))))
+  (svg
+   ((fill . "#111")
+	(x . 0)
+	(y . "17%")
+	(width . "100%")
+	(height . "10%"))
+   (rect
+	((width . 30.0)
+	 (height . 100)
+	 (x . 0)
+	 (y . 0)))
+   (rect
+	((width . 30.0)
+	 (height . 100)
+	 (x . 45.0)
+	 (y . 0))))
+  (svg
+   ((fill . "#f10")
+	(x . 0)
+	(y . "35%")
+	(width . "100%")
+	(height . "10%"))
+   (rect
+	((width . 75)
+	 (height . 100)
+	 (x . 0)
+	 (y . 0))))
+  (svg
+   ((fill . "#111")
+	(x . 0)
+	(y . "53%")
+	(width . "100%")
+	(height . "10%"))
+   (rect
+	((width . 30.0)
+	 (height . 100)
+	 (x . 0)
+	 (y . 0)))
+   (rect
+	((width . 30.0)
+	 (height . 100)
+	 (x . 45.0)
+	 (y . 0))))
+  (svg
+   ((fill . "#111")
+	(x . 0)
+	(y . "70%")
+	(width . "100%")
+	(height . "10%"))
+   (rect
+	((width . 30.0)
+	 (height . 100)
+	 (x . 0)
+	 (y . 0)))
+   (rect
+	((width . 30.0)
+	 (height . 100)
+	 (x . 45.0)
+	 (y . 0))))
+  (svg
+   ((fill . "#f10")
+	(x . 0)
+	(y . "88%")
+	(width . "100%")
+	(height . "10%"))
+   (rect
+	((width . 75)
+	 (height . 100)
+	 (x . 0)
+	 (y . 0)))))
+ (text
+  ((x . 37.5)
+   (y . 95.0)
+   (dominant-baseline . "middle")
+   (text-anchor . "middle")
+   (fill . "#edf"))
+  "雷雷震"))
+#+end_example
 

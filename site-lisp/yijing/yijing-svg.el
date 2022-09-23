@@ -9,6 +9,9 @@ The bigger this number is, the smaller the center gap.")
 (defvar gua-svg-fill-factor 0.75)
 (defvar gua-svg-yao-fill-factor 0.618)
 
+(defvar gua-svg-background "#fff"
+  "Svg background color.")
+
 (defvar gua-svg-color
   '(:yin "#111" :yang "#f10" :text "#edf")
   "Default color for the yao of gua svg.")
@@ -67,6 +70,8 @@ The bigger this number is, the smaller the center gap.")
 ;;; SVG layout
 
 (defun gua-wrap-svg-tag (attris elm)
+  "Append as attributes if svg tagged.
+Otherwise return with svg tagged."
   (if (eq (car elm) 'svg)
       (gua-append-attris elm attris)
     `(svg ,attris ,elm)))
@@ -123,28 +128,35 @@ svg-image compatible data."
 
 (defun gua--svg (gua width height)
   "Produce an image object for GUA of WIDTH and HEIGHT."
-  `(svg ((width . ,width) (height . ,height)
-         ;; (version . "1.1")
-         ;; (xmlns . "http://www.w3.org/2000/svg")
-         ;; (xmlns:xlink . "http://www.w3.org/1999/xlink")
-         )
-        ;; Gua takes top 80% of space
-        (g ((transform
-             . ,(format "scale(%f)\ntranslate(%f, %f)"
-                        gua-svg-fill-factor
-                        (* 0.5 width (- 1 gua-svg-fill-factor))
-                        ;; y make space for text
-                        (* 0.25 height (- 1 gua-svg-fill-factor)))))
-           ,@(gua--svg-yaos
-              (gua-binary->internal (gua->binary gua))
-              width height))
-        ;; Text take bottom 20% of space
-        (text ((x . ,(* 0.5 width))
-               (y . ,(* 0.95 height))
-               (dominant-baseline . "middle")
-               (text-anchor . "middle")
-               (fill . ,(gua-get-color :text)))
-              ,(gua-full-name gua))))
+  (let ((svg (svg-create width height)))
+	;; cross-platform svg background color solution, see:
+	;; https://stackoverflow.com/questions/11293026/default-background-color-of-svg-root-element
+	(svg-rectangle svg 0 0 "100%" "100%" :fill-color gua-svg-background)
+	;; Gua takes top 80% of space
+	(dom-append-child
+	 svg
+	 `(g ((transform
+		   .
+		   ""
+		   ;; ,(format "scale(%f)\ntranslate(%f, %f)"
+		   ;;            gua-svg-fill-factor
+		   ;;            (* 0.5 width (- 1 gua-svg-fill-factor))
+		   ;;            ;; y make space for text
+		   ;;            (* 0.25 height (- 1 gua-svg-fill-factor)))
+		   ))
+		 ,@(gua--svg-yaos
+			(gua-binary->internal (gua->binary gua))
+			width height)))
+	;; Text take bottom 20% of space
+	(dom-append-child
+	 svg
+	 `(text ((x . ,(* 0.5 width))
+             (y . ,(* 0.95 height))
+             (dominant-baseline . "middle")
+             (text-anchor . "middle")
+             (fill . ,(gua-get-color :text)))
+            ,(gua-full-name gua)))
+	svg))
 
 (defun gua--svg-multiple (guas width height)
   `(svg ((width . ,(* 3.0 width))
@@ -168,11 +180,8 @@ svg-image compatible data."
        (gua--svg gua width height)))))
 
 (defun gua-svg-test ()
-  (let* ((height 100)
-         (width (* 0.75 height)))
-    (svg-gua '(svg-yang svg-yin svg-yin svg-yin svg-yang svg-yin)
-	     :height (* (float height) gua-svg-fill-factor)
-	     :aspect-ratio (/ (float width) (float height)))))
+  (let ((height 100))
+	(gua-svg "震" (* (float height) gua-svg-fill-factor))))
 
 ;;; Yao translation
 
@@ -219,5 +228,27 @@ svg-image compatible data."
                     (insert "|" (s-join "|" unicodes) "|\n")
                     )))))))
 
+(defun yijing-display-natural-order-or-bin (bins)
+  (yijing-with-buffer
+   (lambda ()
+     (cl-loop for bin in bins
+			  for gua = (gua-from-bin bin)
+			  for i = (gua-binary->int bin)
+              collect gua into guas
+              collect (gua-get-unicode i)
+              into unicodes
+              ;; collect (gua-get-unicode (+ (* i 8) j)) into guas
+              finally
+              (progn
+                (insert "|" (s-join "|" guas) "|\n")
+                (insert "|" (s-join "|" unicodes) "|\n")
+                )))))
+(yijing-display-natural-order-or-bin
+ '("011111"
+   "001111"
+   "000111"
+   "000011"
+   "000001"
+   "000000"))
 (provide 'yijing-svg)
 ;;; yijing-svg.el ends here

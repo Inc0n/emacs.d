@@ -23,7 +23,6 @@
           abort-recursive-edit
           ace-jump-done
           ace-jump-move
-          ace-window
           avy-goto-line
           backward-char
           backward-kill-word

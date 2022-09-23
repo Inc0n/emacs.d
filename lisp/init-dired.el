@@ -20,7 +20,6 @@ If no files marked, always operate on current line in dired-mode."
   (dired-do-shell-command command arg file-list)
   (message command))
 
-
 (defun my/ediff-files ()
   "@see https://oremacs.com/2017/03/18/dired-ediff/.
 Now use dired-diff under the hood."
@@ -42,25 +41,13 @@ Now use dired-diff under the hood."
                    "pdf" "dvi" "pdf.gz" "ps" "eps" "xhtml" "html" "htm" "mht")
                   ("7z x" "rar" "zip" "7z") ; "e" to extract, "x" to extract with full path
                   ("open"
-                   "ogm"
-                   "avi"
-                   "mpg"
-                   "rmvb"
-                   "rm"
-                   "flv"
-                   "wmv"
+				   "ogm" "avi"
+                   "mpg" "flv" "wmv"
                    "mkv" "mp4" "m4v"
-                   "wav"
-                   "webm"
-                   "part"
-                   "mov"
-                   "3gp"
-                   "crdownload"
-                   "mp3")
+                   "webm" "mov" "mp3")
                   ("open" "list" "pls")
                   ("qiv" "gif" "jpeg" "jpg" "tif" "png")
-                  ("libreoffice" "doc" "docx" "xls" "xlsx" "odt")
-                  ("djview" "djvu")))))
+                  ("libreoffice" "doc" "docx" "xls" "xlsx" "odt")))))
 
 (defun compress-pdf (file-name)
   "Compress FILE-NAME, which should be a pdf."
@@ -79,20 +66,17 @@ Now use dired-diff under the hood."
     (unless (setq insert-directory-program (executable-find "gls"))
       (warn "Run `brew install coreutils' to enable functional dired"))))
 
-;; https://www.emacswiki.org/emacs/EmacsSession which is easier to use
-;; See `session-globals-regexp'
 (with-eval-after-load 'dired
-  (with-eval-after-load 'evil
-    (evil-set-initial-state 'dired-mode 'emacs))
   ;; keep single dired buffer
   (setq dired-kill-when-opening-new-dired-buffer t)
   ;; search file name only when focus is over file
   (setq dired-isearch-filenames 'dwim)
 
-  ;; @see http://blog.twonegatives.com/post/19292622546/dired-dwim-target-is-j00-j00-magic
-  ;; when there is two dired buffer, Emacs will select another buffer
-  ;; as target buffer (target for copying files, for example).
-  ;; It's similar to windows commander.
+  ;; @see
+  ;; http://blog.twonegatives.com/post/19292622546/dired-dwim-target-is-j00-j00-magic
+  ;; when there is two dired buffer, Emacs will select another buffer as
+  ;; target buffer (target for copying files, for example).  It's similar
+  ;; to windows commander.
   (setq dired-dwim-target t)
 
   (require 'dired-x)
@@ -112,13 +96,13 @@ Now use dired-diff under the hood."
     "e" 'my/ediff-files
     "h" [?^]                            ; was describe-mode
     "l" [return]                        ; was dired-do-redisplay
-    "\\" 'diredext-exec-git-command-in-shell
     "/" 'dired-isearch-filenames)
 
   (add-hook 'dired-mode-hook
             (defun dired-mode-hook-setup ()
               "Set up dired."
-              (dired-hide-details-mode 1))))
+              ;; (dired-hide-details-mode -1)
+			  )))
 
 (provide 'init-dired)
-;;; init-dired ends here
+;;; init-dired.el ends here

@@ -2,11 +2,6 @@
 ;;; Commentary:
 ;;; Code:
 
-(defun util/ensure (feature)
-  "Make sure FEATURE is required."
-  (unless (require feature nil t)
-    (warn "util/ensure - feature %s cannot be required" feature)))
-
 (defun util/shell-command-to-lines (command)
   "Return lines of COMMAND output."
   (split-string (shell-command-to-string command)
@@ -78,18 +73,17 @@ Optional argument DEFAULT-STRING default string to return from `read-string'."
   "Get thing at point.  Gotten from `ivy-thing-at-point'.
 If region is active get region string.
 Else use `thing-at-point' to get current string 'symbol."
-  (cond ((use-region-p) (util/selected-str))
+  (cond ((use-region-p)
+		 (buffer-substring-no-properties (region-beginning) (region-end)))
         ((and (not (= (point-max) (point)))
-	      (char-equal ?\s (char-after)))
+			  (char-equal ?\s (char-after)))
          "")
         ;; ((thing-at-point 'url))
-        ((let ((s (thing-at-point 'symbol 'no-properties)))
+        ((let ((s (thing-at-point 'symbol :no-properties)))
            (and (stringp s)
-	        (if (string-match "\\`[`']?\\(.*?\\)'?\\'" s)
-		    (match-string 1 s)
-	          s))))
-        ((looking-at "(+\\(\\(?:\\sw\\|\\s_\\)+\\)\\_>")
-         (match-string-no-properties 1))
+				(if (string-match "\\`[`']?\\(.*?\\)'?\\'" s)
+					(match-string 1 s)
+				  s))))
         (:else "")))
 
 (defun util/thing-at-point/deselect ()
@@ -99,9 +93,22 @@ If region is active get region string and deactivate."
     (when (region-active-p)
       (deactivate-mark))))
 
-(defun buffer-too-big-p ()
-  "If `buffer-size' is more than 3000 lines."
-  (> (buffer-size) (* 3000 60)))
+;; files, very very long line counter-measurement
+(use-package so-long :ensure nil
+  :defer 1
+  :config
+  (setq so-long-predicate 'buffer-too-big-p) ; was so-long-statistics-excessive-p
+  (defun buffer-too-big-p ()
+	"If buffer is more than 3000 lines, each line >= 60 bytes."
+	(cl-destructuring-bind (line longest-line-len mean-line-len)
+		(buffer-line-statistics)
+	  (if (apply 'derived-mode-p so-long-target-modes)
+		  (> longest-line-len so-long-threshold)
+		(if (derived-mode-p 'text-mode)
+			(and (> line 3000)
+				 (> mean-line-len 60))
+		  (error "Buffer mode (%s) is not supported" major-mode)))))
+  :init (global-so-long-mode +1))
 
 (defun delete-this-buffer-and-file ()
   "Delete the current file, and kill the buffer."
@@ -151,20 +158,9 @@ version control automatically."
         (rename-buffer new-name t)
         (set-visited-file-name new-name)
         (set-buffer-modified-p nil)
-        (when (vc-backend filename)
-          (vc-register))))))
-
-(defun buffer-file-temp-p ()
-  "If variable `buffer-file-name' is nil or a temp file or HTML file converted from org file."
-  (and (not scratch-buffer)             ; don't treat scratch-buffer as temp
-       (or (null buffer-file-name)      ;; file does not exist at all
-	       ;; org-babel edit inline code block need calling hook
-	       ;; file is create from temp directory
-	       ;; (string-match (concat "^" temporary-file-directory) f)
-	       ;; file is a html file exported from org-mode
-	       (and (string-match "\.html$" buffer-file-name)
-		        (file-exists-p
-                 (replace-regexp-in-string "\.html$" ".org" buffer-file-name))))))
+        ;; (when (vc-backend filename)
+        ;;   (vc-register))
+		))))
 
 ;;
 
@@ -172,8 +168,6 @@ version control automatically."
   "Reset SYMBL to its standard value."
   (interactive (list (intern (read-string "Symbol: "))))
   (set symbl (eval (car (get symbl 'standard-value)))))
-
-;;
 
 (defmacro define-hook-setup (hook-name &rest body)
   "Macro helper for `add-hook' to HOOK-NAME.
@@ -213,18 +207,18 @@ function will have the name `HOOK-NAME'-setup"
                 collect `(define-key ,keymap ,key ,bind))
      ,keymap))
 
-(defmacro -command (&rest sequence-of-cmds)
-  `(lambda ()
-     (interactive)
-     ,@(cl-loop for cmd in sequence-of-cmds
-                collect
-                (cl-typecase cmd
-                  (string cmd)
-                  (vector `(call-interactively
-                            (or (key-binding ,cmd)
-                                 'undefined)))
-                  (list cmd)
-                  (symbol `(call-interactively ',cmd))))))
+;; (defmacro -command (&rest sequence-of-cmds)
+;;   `(lambda ()
+;;      (interactive)
+;;      ,@(cl-loop for cmd in sequence-of-cmds
+;;                 collect
+;;                 (cl-typecase cmd
+;;                   (string cmd)
+;;                   (vector `(call-interactively
+;;                             (or (key-binding ,cmd)
+;;                                  'undefined)))
+;;                   (list cmd)
+;;                   (symbol `(call-interactively ',cmd))))))
 
 (defun my/unbound-symbol (arg)
   "Unbound for ARG be it function or symbol."
@@ -284,4 +278,4 @@ function will have the name `HOOK-NAME'-setup"
     (message "can only rotate two windows at a time")))
 
 (provide 'init-utils)
-;;; init-utils ends here
+;;; init-utils.el ends here

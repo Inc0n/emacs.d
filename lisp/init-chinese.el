@@ -16,10 +16,9 @@
          ;; "DFFangSongW3-A"
          ;; "AaFangSong (Non-Commercial Use)"
          ;; "STFangSong"
-	 "Songti SC"
-         ;; "KaiTi SC"
-	 ;; "Hiragino Sans GB"
-	 ))
+		 ;; "KaiTi SC"
+         ;; "Hiragino Sans GB"
+		 "Songti SC"))
     (dolist (charset '(kana han symbol cjk-misc bopomofo))
       (set-fontset-font (frame-parameter nil 'font) charset
                         (font-spec :family chinese
@@ -30,8 +29,8 @@
 
 (setq face-font-rescale-alist '(("Hiragino Sans GB" . 1.2)))
 
-;; visual alignment, chinese and variable pitch font
-;; doesn't work too well
+;; visual alignment, chinese and variable pitch font.
+;; Doesn't work too well
 (use-package valign
   :disabled
   :ensure t
@@ -42,30 +41,16 @@
 
 ;; {{ make IME compatible with evil-mode
 (setq default-input-method "chinese-py")
-(defvar evil/state-before-im-change nil)
 
-(defun evil-toggle-input-method (arg)
+(defun my/toggle-input-method (arg)
   "When input method is on, goto `evil-insert-state'.
 ARG will allow selection of input method."
   (interactive "P")
   ;; evil-mode must be in insert mode to change IM
-  (unless (evil-insert-state-p)
-    (setq evil/state-before-im-change evil-state)
-    (evil-insert-state))
   (toggle-input-method (and (null current-input-method) arg))
-  (cond (current-input-method
-	     ;; evil-escape and pyim may conflict
-	     ;; @see https://github.com/redguardtoo/emacs.d/issues/629
-	     ;; (unless (bound-and-true-p evil-escape-inhibit)
-         ;; (evil-escape-mode -1))
-	     (when (not (memq evil-previous-state '(normal)))
-	       (evil-change-to-previous-state))
-	     (message "IME on!"))
-	    (t
-         (when evil/state-before-im-change
-           (evil-change-state evil/state-before-im-change)
-           (setq evil/state-before-im-change nil))
-	 (message "IME off!"))))
+  (if current-input-method
+	  (message "IME on!")
+	(message "IME off!")))
 ;; }}
 
 ;; {{ cal-china-x setup
@@ -110,7 +95,7 @@ Optional argument ARGS ."
 
   (setq pyim-fuzzy-pinyin-alist
         '(("en" "eng")
-	  ("in" "ing")))
+		  ("in" "ing")))
 
   ;; pyim-bigdict is recommended (20M). There are many useless words in pyim-greatdict which also slows
   ;; down pyim performance
@@ -128,19 +113,19 @@ Optional argument ARGS ."
     (when-let ((files (directory-files-recursively my/pyim-directory "\.pyim$")))
       (setq pyim-dicts
             (mapcar (lambda (f)
-		      (list :name (file-name-base f) :file f))
+					  (list :name (file-name-base f) :file f))
                     files))
       ;; disable "basedict" if bigdict or greatdict is used
       (when (cl-notany (lambda (f)
-			 (or (string= "pyim-another-dict" (file-name-base f))
-			     (string= "pyim-bigdict" (file-name-base f))
-			     (string= "pyim-greatdict" (file-name-base f))))
-		       files)
-	(pyim-basedict-enable))))
+						 (or (string= "pyim-another-dict" (file-name-base f))
+							 (string= "pyim-bigdict" (file-name-base f))
+							 (string= "pyim-greatdict" (file-name-base f))))
+					   files)
+		(pyim-basedict-enable))))
 
   ;; don't use tooltip
   (setq pyim-page-tooltip 'popup))
 ;; }}
 
 (provide 'init-chinese)
-;;; init-chinese ends here
+;;; init-chinese.el ends here

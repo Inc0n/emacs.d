@@ -4,14 +4,36 @@
 
 (require-package 'geiser)
 (require-package 'slime)
-(require-package 'gambit)
 
 (setq-default inferior-lisp-program ;; (executable-find "ecl")
-			  "ros -Q run")
+			  (executable-find "sbcl"))
 
 ;; lisp mode setups
+
+(with-eval-after-load 'sly
+  ;; too intrusive, it does not co-exist with slime.
+  ;; e.g. asking to remove slime on every lisp file opened.
+  (require 'sly-autoloads)
+
+  (use-package sly-stepper
+	:straight
+	(sly-stepeer :type git :host github
+				 :repo "joaotavora/sly-stepper"
+				 :files ("*.el" "*.lisp")))
+
+  (add-hook 'sly-mode-hook
+			(defun sly-mode-hook ()
+			  (require 'sly-stepper-autoloads)
+			  ;; no fuck off
+			  (sly-symbol-completion-mode -1))))
+
+(with-eval-after-load 'lisp-mode
+  ;; 09/08/22 racket has changed my view on [()] mixing
+  (modify-syntax-entry ?\[ "(]" lisp-mode-syntax-table)
+  (modify-syntax-entry ?\] ")[" lisp-mode-syntax-table))
+
 (defun my/lisp-setup ()
-  "Enable features useful in any Lisp mode."
+  "Enable features useful in for Lisp mode."
   (puni-mode 1)
   (rainbow-delimiters-mode 1)
   (turn-on-eldoc-mode)
@@ -31,7 +53,7 @@
                 inferior-lisp-mode-hook
                 lisp-interaction-mode-hook
                 slime-repl-mode-hook
-				;; sly-mrepl-mode-hook
+				sly-mrepl-mode-hook
                 ;;
 				scheme-mode-hook
                 gerbil-mode-hook))
@@ -44,7 +66,8 @@
   ;; (add-hook 'racket-mode-hook #'racket-unicode-input-method-enable)
   ;; (add-hook 'racket-repl-mode-hook #'racket-unicode-input-method-enable)
   ;; (setq racket-images-system-viewer "qiv")
-
+  (setq racket-error-context 'high
+		racket-memory-limit 1024)
   (defun my/racket-mark-defun ()
 	(interactive)
 	(while (condition-case err
@@ -61,7 +84,17 @@
 	  (comint-send-string
 	   (get-buffer-process racket-repl-buffer-name)
 	   ""))
-	(racket-repl)))
+	(racket-repl))
+
+  (defun racket-mode-setup ()
+	(setq-local eldoc-documentation-function
+				'racket-xp-eldoc-function)
+	(racket-xp-mode 1))
+  (add-hook 'racket-mode-hook 'racket-mode-setup)
+
+  (define-key racket-mode-map
+	[?\C-\M-y] nil ; racket-insert-lambda
+	))
 
 ;; slime swank
 
@@ -75,8 +108,7 @@
   ;; in-case not loaded properly, I will do it myself
   (add-hook 'slime-event-hooks 'slime-dispatch-media-event)
 
-  (setq slime-lisp-implementations
-		nil
+  (setq slime-lisp-implementations nil
 		;; `((sbcl (,(executable-find "sbcl")))
 		;;   (gerbil-scheme ("gxi" "-:d-") :init gerbil-scheme-start-swank))
 		))
@@ -84,8 +116,9 @@
 ;;; gerbil
 
 ;; gambit
-(autoload 'gambit-inferior-mode "gambit" "gambit package for gerbil")
-(add-hook 'inferior-scheme-mode-hook #'gambit-inferior-mode)
+;; (require-package 'gambit)
+;; (autoload 'gambit-inferior-mode "gambit" "gambit package for gerbil")
+;; (add-hook 'inferior-scheme-mode-hook #'gambit-inferior-mode)
 
 ;; gerbil setup
 (use-package gerbil-mode
@@ -104,7 +137,7 @@
   ;;   ;; gerbil tags
   ;;   ;; (add-to-list 'tags-table-list (concat my/gerbil-home "/src/TAGS"))
   ;;   (setq scheme-program-name gerbil-program-name))
-  
+
   ;; (add-auto-mode 'gerbil-mode "\\.ss$")
   )
 

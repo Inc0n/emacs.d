@@ -142,6 +142,13 @@ zig-mode
 (struct "struct {" n>
 		(p "field") ": " (p "type") "," n
 		"}")
+
+vhdl-mode
+
+(if > "if " p " then" n> p n> "end if;")
+(begin > "begin\n" p > "end")
+(process "process(" p ")\n" > "begin\n" > "end process;")
+
 ;; Local Variables:
 ;; mode: lisp-data
 ;; outline-regexp: "[a-z]"

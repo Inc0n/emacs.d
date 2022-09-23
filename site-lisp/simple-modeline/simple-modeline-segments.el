@@ -96,13 +96,18 @@
 
 (defun simple-modeline-segment-position ()
   "Displays the current cursor position in the mode-line."
-  `((size-indication-mode " %p%% ")
+  `((size-indication-mode
+	 " %p%% ")
     (line-number-mode
      (column-number-mode
-      (column-number-indicator-zero-based "%l:%c" "%l:%C")
-      "L%l")
+      (column-number-indicator-zero-based
+	   " %l:%c"
+	   " %l:%C")
+      " L%l")
      (column-number-mode
-      (column-number-indicator-zero-based (4 "%cC") (4 "%CC"))))
+      (column-number-indicator-zero-based
+	   (4 " %cC")
+	   (4 " %CC"))))
     (mark-active                        ; (region-active-p)
      (:eval
       (propertize

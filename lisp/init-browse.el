@@ -40,8 +40,8 @@ Prefix ARG will prompt for a file name in current directory."
 
 (define-hook-setup 'eww-mode-hook
   (setq-local truncate-lines t)
-  (setq-local shr-width 90)
-  (setq-local fill-column 90
+  ;; (setq-local shr-width 90)
+  (setq-local ;; fill-column 90
               visual-fill-column-center-text nil)
   (text-scale-set 1.5)
   (visual-line-mode 1)
@@ -62,7 +62,6 @@ Prefix ARG will prompt for a file name in current directory."
   "My eww that can search with search engines.
 Non-nil ARG will allow search engine selection."
   (interactive "P")
-  (require 'eww)
   (let ((engine (if arg
                     (completing-read "Engine: " (mapcar 'car eww-search-engine-alist))
                   eww-search-default-engine)))
@@ -83,7 +82,6 @@ Non-nil ARG will allow search engine selection."
   (setq shr-max-image-proportion 0.3))
 
 (with-eval-after-load 'eww
-
   (advice-add 'eww-download-callback :around 'my/eww-download-using-title)
   (defun my/eww-download-using-title (orig-func status url dir)
 	"Use a better filename, and selection of directory."
@@ -119,10 +117,9 @@ Non-nil ARG will allow search engine selection."
     "L" 'eww-forward-url
     "l" 'my/eww-search
     "k" 'previous-line
-    "J" 'scroll-up-command
-    "K" 'scroll-down-command
-	"D" ;; 'eww-toggle-paragraph-direction
+	;; "D" 'eww-toggle-paragraph-direction
     "U" 'eww)
+
   (defvar eww-home-page "https://lite.duckduckgo.com/")
   (defvar eww-search-default-engine "duckduckgo")
   (setq eww-download-directory "~/sources/browse-session/"))

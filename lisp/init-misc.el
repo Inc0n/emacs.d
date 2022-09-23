@@ -16,26 +16,40 @@
 ;;		 scroll-conservatively 0)
 
 ;; {{ misc
-(add-hook 'after-init-hook 'my/misc-setup)
-(defun my/misc-setup ()
-  (mouse-wheel-mode +1)
-  ;; (global-hl-line-mode +1) ;; highlight current line
-  (global-so-long-mode +1) ;; files, very very long line counter-measurement
-  (delete-selection-mode -1)
+(use-package emacs
+  :defer 2
+  :config
+  ;; midnight
+  ;; purges buffers which haven't been displayed in configured period
+  (setq midnight-period (* 3600 12)) ;; 12 hours
+  (midnight-mode 1)
+
+  (mouse-wheel-mode 1)
+  ;; (global-hl-line-mode +1)				; highlight current line
+  (delete-selection-mode 1)
   (savehist-mode 1)
 
   (recentf-mode +1)
   (global-subword-mode +1)
 
-  (tab-bar-mode 1)
-  (which-function-mode -1)
-
   ;; visual
   ;; (golden-ratio-mode +1)
-  ;; (global-whitespace-mode +1)
-  (blink-cursor-mode -1)
   (transient-mark-mode +1)				; mark highlight
-  (show-paren-mode +1))
+
+  (which-function-mode -1)
+
+  (autoload 'server-running-p "server")
+  (unless (server-running-p)
+	(server-mode 1))					; use this for emacsclient -n
+  (save-place-mode 1)					; save cursor places in files
+
+  (global-auto-revert-mode 1)
+
+  (let ((font ;; "Fira Code"
+		 "SF Mono"))
+    ;; (set-face-attribute 'default nil :height 140)
+	(when (find-font (font-spec :name font))
+	  (set-face-attribute 'default nil :font font))))
 
 ;; (setq system-time-locale "C")
 (with-eval-after-load 'imenu
@@ -50,21 +64,19 @@
  ;; grep-highlight-matches t
  ;; grep-scroll-output t
  tooltip-delay 0.7
- ;; void problems with crontabs, etc.
  ;; require-final-newline t ; bad idea, could accidentally edit others' code
  mouse-yank-at-point nil
- mouse-highlight nil
+ mouse-highlight t
  truncate-lines nil
  truncate-partial-width-windows nil
- line-spacing 2)
+ line-spacing 1)
 
 (setq mouse-wheel-progressive-speed nil)
-(setq show-paren-delay 0.05)
 
 ;; visible-bell has some issue
 ;; @see https://github.com/redguardtoo/mastering-emacs-in-one-year-guide/issues/9#issuecomment-97848938
-(setq visible-bell nil
-	  ring-bell-function 'ignore
+(setq visible-bell nil 					; flashes white in dark themes
+	  ring-bell-function 'ignore		; C-wheelup triggers this tons
 	  enable-recursive-minibuffers t)
 
 ;; trash configuration
@@ -79,7 +91,7 @@
 ;; Flash the mode-line setup
 ;; @see https://www.emacswiki.org/emacs/AlarmBell for more
 
-(setq save-interprogram-paste-before-kill t ; kill-ring and clipboard are same?
+(setq save-interprogram-paste-before-kill t ; sync kill-ring and clipboard
 	  confirm-kill-emacs 'y-or-n-p
 	  history-delete-duplicates t
 	  ;; NO automatic new line when scrolling down at buffer bottom
@@ -99,32 +111,12 @@
 	  '(read-only t point-entered minibuffer-avoid-prompt face minibuffer-prompt))
 
 (require-package 'avy)
-(setq avy-style 'at-full)
-
-;; midnight
-;; this package purges buffers which haven't been displayed in configured period
-(setq midnight-period (* 3600 12)) ;; 12 hours
-(add-hook 'after-init-hook 'midnight-mode)
-(add-hook 'midnight-hook
-		  (defun midnight-task ()
-			(recentf-save-list)))
-
-(define-advice indent-for-tab-command
-	(:around (orig-func &optional arg) move-delim)
-  "Move cursor out of any delimiters."
-  (let ((tick (buffer-chars-modified-tick)))
-	(funcall orig-func arg)
-	(when (and (eq tick (buffer-chars-modified-tick))
-			   (or (not (bound-and-true-p evil-mode))
-		   (evil-insert-state-p))
-			   (memq (char-syntax (following-char)) '(?\) ?\")))
-	  (just-one-space 0)
-	  (forward-char 1))))
+(with-eval-after-load 'avy
+  (setq avy-style 'at-full))
 
 ;;;;
 ;; Font
 ;; https://www.gnu.org/software/emacs/manual/html_node/emacs/Fonts.html
-;;
 (defun completing-read-fonts (font)
   "`completion-read' style FONT selection."
   (interactive
@@ -135,21 +127,29 @@
 					  ;; "Bitstream Vera Sans Mono"
 					  ;; "TerminessTTFNerdFont"
 					  "Inconsolata"
-					  "Liberation Mono"
+					  ;; "Liberation Mono"
 					  "Fira Code"
 					  "Source Code Pro"
-					  "Hack"
+					  ;; "Hack"
 					  "Iosevka"
-					  "Jetbrains Mono"
-					  "moneco"	   ;; monaco with ligatures
+					  "JetBrains Mono"
+					  "Moneco"	   ;; monaco with ligatures
+					  "SF Mono"	   ; best
 					  "Menlo"	   ; osx default
+					  "Monocraft"
+					  "CozetteVector"
+					  "Iosevka SS02"
 					  ;; "Amiri Typewriter"
 					  ;; "Alegreya"
 					  "Courier Prime"
 					  "Anonymous Pro"
 					  "PT Mono"
-					  "Cascadia code")))))
-  (set-face-attribute 'default nil :font font :weight 'normal :slant 'normal)
+					  "Cascadia Code")))))
+  (set-face-attribute 'default nil :font font)
+  ;; Update fixed-pitch
+  (set-face-attribute 'fixed-pitch nil :font font)
+  ;; (set-face-attribute 'default nil :height 150)
+  ;; (set-face-attribute 'default nil :family "Monospace")
   (chinese/fix-font)
   (message "Font: %s" font))
 
@@ -163,7 +163,8 @@
   (defun my/isearch-at-point-maybe (arg)
 	(interactive "P")
 	(cond ((equal '(4) arg) (isearch-forward-thing-at-point))
-		  ((equal '(16) arg) (isearch-forward-symbol-at-point))
+		  ;; Use [M-s .] instead
+		  ;; ((equal '(16) arg) (isearch-forward-symbol-at-point))
 		  (:else (call-interactively 'isearch-forward))))
 
   (defun isearch-within-defun-cleanup ()
@@ -174,47 +175,21 @@
 	(interactive)
 	(narrow-to-defun)
 	(add-hook 'isearch-mode-end-hook 'isearch-within-defun-cleanup 0 'local)
-	(call-interactively 'my/isearch-at-point-maybe))
+	(isearch-forward-thing-at-point))
 
-  (defvar isearch-transient-map
-	(let ((map (make-sparse-keymap)))
-	  (define-key map "n" 'isearch-repeat-forward)
-	  (define-key map "N" 'isearch-repeat-backward)
-	  (define-key map "p" 'isearch-repeat-backward)
-	  map)
-	"Used for as a transient for `my/isearch'.")
-
-  (defun isearch-transient-interface (&optional additional-on-exit-fn)
-	(set-transient-map
-	 isearch-transient-map
-	 t									; persistent transient map
-	 (lambda ()								; cleanup
-	   (lazy-highlight-cleanup 'force)
-	   ;; (message "state: %s" (cdr isearch-cmds))
-	   (when (cdr isearch-cmds)			; avoid exiting twice
-		 (isearch-exit))
-	   (when (functionp additional-on-exit-fn)
-		 (funcall additional-on-exit-fn)))))
-
-  (defun my/isearch (no-regexp &optional arg)
-	"I-search with transient map interface.
-Non-nil INTERACTIVE-P means `isearch', otherwise it assumes
-`isearch-string' is set and uses `isearch' as an interface.
-TODO: Any prefix ARG will turn the search to occur."
-	(interactive (list t current-prefix-arg))
-	(isearch-forward-regexp no-regexp nil)
-	(isearch-transient-interface))
+  (defun my/isearch-query-replace ()
+	(interactive)
+	(if (or (null isearch-string)
+			(string-empty-p isearch-string))
+		(message "Empty text to replace")
+	  (when isearch-forward				; goto start of candidate
+		(isearch-repeat-backward))
+	  (isearch-exit)					; needs to quit before
+	  (visual-replace-regexp-text-at-point
+	   isearch-string isearch-regexp)))
 
   (define-keys isearch-mode-map
-	[?\M-q] (lambda () (interactive)
-			  (if (or (null isearch-string)
-					  (string-empty-p isearch-string))
-				  (user-error "Empty text to replace")
-				(when isearch-forward	; goto start of candidate
-				  (isearch-repeat-backward))
-				(isearch-exit)			; needs to quit before
-				(visual-replace-regexp-text-at-point
-				 isearch-string isearch-regexp))))
+	[?\M-q] #'my/isearch-query-replace)
   :init
   (setq isearch-lazy-count t			; enable match numbers count
 		isearch-lazy-highlight t
@@ -230,17 +205,17 @@ TODO: Any prefix ARG will turn the search to occur."
   (setq whitespace-style
 		'(face							; visualize things below:
 		  trailing						; trailing blanks
-		  space-before-tab				; spaces before tab
-		  newline
-		  indentation::tab
-		  empty							; empty lines at beginning/end of buffer
-		  ;; tabs							; tabs (show by face)
+		  ;; space-after-tab				; spaces before tab
+		  indentation::tabs					; tabs at line beg
+
+		  tabs							; tabs (show by face)
 		  ;; lines
 		  ;; tab-mark					   ; tabs (show by symbol)
 		  lines-tail					; lines go beyond `fill-column'
+		  ;; empty							; empty lines
+		  newline						;
 		  missing-newline-at-eof))
-  (setq whitespace-action '(cleanup auto-cleanup))
-  (add-hook 'prog-mode 'whitespace-mode))
+  (setq whitespace-tab-regexp "^\\(	+\\)"))
 
 (defun log-done ()
   "Log a TODO item to DONE with `org-time-stamp'."
@@ -300,15 +275,16 @@ TODO: Any prefix ARG will turn the search to occur."
   "Save Kmacro for Lisp code."
   (interactive)
   (let ((exp-under-cursor (sexp-at-point)))
+	(setf my/temp-lambda exp-under-cursor)
 	(if (null exp-under-cursor)
-		(message "Not a valid sexp under cursor!")
-	  (setf my/temp-lambda exp-under-cursor)
-	  (message "new temp lambda saved. Call `run-temp-lambda' to run it.\n%S" exp-under-cursor))))
+		(message "Resetting temp lambda to `nil'!")
+	  (message "New temp lambda saved. Call `run-temp-lambda' to run it.\n%S"
+			   exp-under-cursor))))
 
 (defun run-temp-lambda ()
   "Run Kmacro for Lisp code."
   (interactive)
-  (message "%S" (eval my/temp-lambda)))
+  (message "%S" (eval-expression my/temp-lambda)))
 
 ;; turn on auto-fill-mode, don't use `text-mode-hook' because for some
 ;; mode (org-mode for example), this will make the exported document
@@ -323,24 +299,10 @@ TODO: Any prefix ARG will turn the search to occur."
 		  '("^@@ -[0-9]+,[0-9]+ \\+[0-9]+,[0-9]+ @@"))))
 ;; }}
 
-
-;; @see http://www.emacswiki.org/emacs/SavePlace
-(use-package saveplace
-  :defer 1
-  :init (save-place-mode 1))
-
-;; use this for emacsclient -n
-(use-package server
-  :defer 1
-  :config (if (server-running-p)
-			  (message "server already started")
-			(message "server started")
-			(server-start)))
-
 ;;; auto-save, auto-save-visited - builtin emacs >= 26.1 package
 (setq auto-save-timeout 3
 	  auto-save-interval 100		   ; 100 characters interval
-	  auto-save-default nil
+	  ;; auto-save-default t
 	  auto-save-no-message t)
 (add-hook 'after-init-hook 'auto-save-mode)
 
@@ -349,18 +311,13 @@ TODO: Any prefix ARG will turn the search to occur."
 
 ;; (when (local-require 'auto-save)
 ;;	 (add-to-list 'auto-save-exclude 'file-too-big-p t)
-;;	 (setq auto-save-idle 1) ; 1 seconds
-;;	 (setq auto-save-slient t)
 ;;	 (add-hook 'after-init-hook 'auto-save-enable))
 
 (with-eval-after-load 'autorevert
   (setq auto-revert-verbose t
-	global-auto-revert-non-file-buffers nil))
-(add-hook 'after-init-hook 'global-auto-revert-mode)
+		global-auto-revert-non-file-buffers nil))
 
-(use-package recentf
-  :defer 1
-  :config
+(with-eval-after-load 'recentf
   (setq recentf-keep '(recentf-keep-default-predicate)
 		recentf-max-saved-items 512
 		recentf-exclude
@@ -370,7 +327,7 @@ TODO: Any prefix ARG will turn the search to occur."
 		  ;; "recentf$"
 		  ;; "company-statistics-cache\\.el$"
 		  ".emacs.d/elpa"
-	  "share/emacs"					; make work also on Mac Emacs
+		  "share/emacs"					; make work also on Mac Emacs
 		  ;; ctags
 		  "/TAGS$"
 		  ;; global
@@ -396,7 +353,6 @@ TODO: Any prefix ARG will turn the search to occur."
 ;; https://kdr2.com/resource/stardict.html
 ;;
 (with-eval-after-load 'sdcv
-  (evil-set-initial-state 'sdcv-mode 'motion)
   (setq sdcv-dictionary-simple-list
 		'("Webster's Revised Unabridged Dictionary (1913)"
 		  "汉语大词典 离线版"))
@@ -406,10 +362,59 @@ TODO: Any prefix ARG will turn the search to occur."
 ;; @see http://bling.github.io/blog/2016/01/18/why-are-you-changing-gc-cons-threshold/
 (add-hook 'minibuffer-setup-hook
 		  (defun my/minibuffer-setup-hook ()
+			(when (bound-and-true-p vertico-buffer-mode)
+			  (setq-local display-line-numbers nil))
 			(setq gc-cons-threshold most-positive-fixnum)))
 (add-hook 'minibuffer-exit-hook
 		  (defun my/minibuffer-exit-hook ()
 			(setq gc-cons-threshold my/normal-gc-cons-threshold)))
+
+(use-package emms :defer t
+  :ensure t
+  :config
+  (emms-all)
+  ;; (emms-minimalistic)
+  ;; (emms-default-players)
+  ;; Only installed player: MPV
+  (setq emms-player-list '(emms-player-mpv))
+  ;; emms-info-functions
+  ;; To handle unicode properly in tag editor
+  (emms-i18n-set-default-coding-system 'utf-8 'utf-8)
+  (setq emms-source-file-default-directory
+		"~/Music/playlist/"
+        emms-info-asynchronously t
+		emms-repeat-playlist t)
+  (setq emms-mode-line-icon-enabled-p nil
+		emms-mode-line-format " [♩♪%s]"
+		emms-mode-line-mode-line-function
+		(lambda () ;; display song name only
+		  (or (emms-track-get
+               (emms-playlist-current-selected-track)
+               'info-playing-time)
+              0)
+		  (format
+		   emms-mode-line-format
+		   (emms-track-get
+			(emms-playlist-current-selected-track)
+			'info-title)
+		   ;; emms-playing-time-string
+		   )))
+  (define-keys emms-playlist-mode-map
+	"e" 'emms-tag-editor-edit
+	"g" 'emms-pause
+	"N" 'emms-next
+	"P" 'emms-previous
+	"n" 'next-line
+	"p" 'previous-line)
+  (emms-playing-time-mode 1)
+
+  (with-eval-after-load 'emms-tag-editor
+	(setcar 							; id3v2 not mid3v2
+	 (cdr (assoc "mp3" emms-tag-editor-tagfile-functions))
+	 "id3v2")))
+
+;; (emms-track 'playlist (expand-file-name file))
+;; (emms-playlist-current-selected-track)
 
 ;; {{ emmet (auto-complete html tags)
 ;; @see https://github.com/rooney/zencoding for original tutorial
@@ -422,7 +427,7 @@ TODO: Any prefix ARG will turn the search to occur."
 ;; }}
 
 (with-eval-after-load 'grep
-  ;; eacl and other general grep (rgrep, grep ...) setup
+  ;; grep that applies to (rgrep, grep ...) setup
   (dolist (v '("auto"
 			   "target"
 			   "node_modules"
@@ -433,7 +438,7 @@ TODO: Any prefix ARG will turn the search to occur."
 			   ".npm"
 			   "elpa"))
 	(add-to-list 'grep-find-ignored-directories v))
-  (dolist (v '("*.min.js"
+  (dolist (v '("*min.js"
 			   "*.map"
 			   "*.bundle.js"
 			   "*.min.css"
@@ -447,12 +452,16 @@ TODO: Any prefix ARG will turn the search to occur."
 			   "*.log"))
 	(add-to-list 'grep-find-ignored-files v))
 
-  ;; wgrep and rgrep, inspired by http://oremacs.com/2015/01/27/my/refactoring-workflow/
+  ;; wgrep and rgrep, inspired by http://oremacs.com/2015/01/27/my-refactoring-workflow/
   (define-key grep-mode-map
 	(kbd "C-x C-q") 'wgrep-change-to-wgrep-mode)
 
   ;; display long lines in truncated style (end line with $)
   (add-hook 'grep-mode-hook (lambda () (setf truncate-lines nil))))
+
+(use-package rg
+  :ensure t
+  :defer t)
 
 ;; {{ https://www.emacswiki.org/emacs/EmacsSession better than "desktop.el" or "savehist".
 ;; Any global variable matching `session-globals-regexp' is saved automatically.
@@ -469,21 +478,6 @@ TODO: Any prefix ARG will turn the search to occur."
 								  search-ring regexp-search-ring))
   (setq session-save-file-coding-system 'utf-8))
 
-(with-eval-after-load 'compile
-  (setq compilation-scroll-output t)
-
-  (define-keys compilation-mode-map
-	"g" nil								; restore 'g' and 'h' keys
-	"h" nil
-	"r" 'recompile)						; rebind recompile to 'r'
-
-  ;; ANSI-escape coloring in compilation-mode
-  (add-hook 'compilation-filter-hook #'ansi-color-compilation-filter)
-
-  (add-to-list 'compilation-error-regexp-alist-alist
-			   '(mocha "at [^()]+ (\\([^:]+\\):\\([^:]+\\):\\([^:]+\\))" 1 2 3))
-  (add-to-list 'compilation-error-regexp-alist 'mocha))
-
 ;;
 
 (defun my/insert-date (prefix)
@@ -492,7 +486,7 @@ With two PREFIX arguments, write out the day and month name."
   (interactive "P")
   (insert
    (format-time-string
-	(cond ((not prefix) "%m-%d-%Y")
+	(cond ((not prefix) "%D")
 		  ((equal prefix '(4)) "%Y-%m-%d")
 		  ((equal prefix '(16)) "%d %B %Y")
 		  (t "%a %b %d %H:%M %Z %Y")))))
@@ -500,13 +494,6 @@ With two PREFIX arguments, write out the day and month name."
 (defun ascii-table ()
   "Show the ascii table in buffer."
   (interactive)
-  ;; (completing-read
-  ;;  "Ascii characters: "
-  ;;  (cl-loop for i from 1 to 255
-  ;;		   collect (cons (format "%S" (format "%c" i))
-  ;;						 (format "%4d" i))
-  ;;	;; (insert (format "%4d %c\n" i i))
-  ;;		   ))
   (pop-to-buffer "*ASCII*")
   (read-only-mode -1)
   (erase-buffer)
@@ -523,22 +510,21 @@ With two PREFIX arguments, write out the day and month name."
 (put 'narrow-to-defun 'disabled nil)
 
 ;; Ctrl-X, u/l	to upper/lowercase regions without confirm
-(put 'downcase-region 'disabled nil)
-(put 'upcase-region 'disabled nil)
+;; (put 'downcase-region 'disabled nil)
+;; (put 'upcase-region 'disabled nil)
 
 (use-package pomodoro :ensure t
   :defer t
   :config
   (push '(pomodoro-mode-line-string pomodoro-mode-line-string) mode-line-format)
   (setq pomodoro-play-sounds nil		; *.wav is not installed
-	pomodoro-break-time 2
-	pomodoro-long-break-time 5
-	pomodoro-work-time 15))
+		pomodoro-break-time 2
+		pomodoro-long-break-time 5
+		pomodoro-work-time 15))
 
 ;; epub setup
-;; (autoload 'nov-mode "nov")
-(defalias 'evil-set-initial-state 'evil-define-key)
 (use-package nov :ensure t
+  :defer t
   :mode ("\\.epub\\'" . nov-mode)
   :config
   (setq nov-text-width t)
@@ -574,28 +560,11 @@ With two PREFIX arguments, write out the day and month name."
 				  (simple-modeline-segment-position
 				   simple-modeline-segment-major-mode)))))
 
-;; (straight-bug-report
-;;	 :interactive
-;;	 :post-bootstrap
-;;	 (setq debug-on-quit t)
-;;	 (straight-use-package
-;;	  '(nov-xwidget )))
 (use-package nov-xwidget
   :disabled
   :straight (nov-xwidget :host github :repo "chenyanming/nov-xwidget" :type git)
   :config
   (add-to-hook 'nov-mode-hook #'nov-xwidget-inject-all-files))
-
-
-(use-package wgrep :ensure t
-  :disabled
-  :defer t
-  :config
-  (define-key grep-mode-map [?\C-c ?\C-c] 'wgrep-finish-edit)
-  ;; save the change after wgrep finishes the job
-
-  (setq wgrep-auto-save-buffer t)
-  (setq wgrep-too-many-file-length 2024))
 ;; }}
 
 (use-package which-key :ensure t
@@ -611,23 +580,6 @@ With two PREFIX arguments, write out the day and month name."
 		which-key-min-display-lines 2)
   (add-hook 'after-init-hook 'which-key-mode))
 
-(use-package ligature
-  :disabled
-  :defer 1
-  :commands (global-ligature-mode)
-  :config
-  ;; (setq ligature-composition-table nil)
-  (add-to-list/s 'ligature-ignored-major-modes '(c-mode c++-mode))
-  (ligature-set-ligatures 'text-mode
-						  '("::" "->" "=>" "==" "===" "!="
-				"++" "<-" "/=" ">=" "<=" "..." "&&" "||" "//"))
-  (ligature-set-ligatures 'prog-mode
-						  '("::" ":::" "->" "=>" "==" "===" "!="
-				"++" "<-" "/=" ">=" "<=" ".."
-				"..." "&&" "||" "//"))
-  :init
-  (global-ligature-mode 1))
-
 (use-package flycheck :ensure t
   :defer t
   :config
@@ -641,14 +593,6 @@ With two PREFIX arguments, write out the day and month name."
   (setq flycheck-display-errors-function
 		'flycheck-display-error-messages-unless-error-list))
 
-(use-package expand-region :ensure t
-  :defer t
-  :config
-  ;; press "v" to expand region
-  ;; then press "c" to contract
-  (setq expand-region-contract-fast-key "c")
-  (setq expand-region-subword-enabled t))
-
 (autoload 'golden-ratio-mode "golden-ratio")
 (with-eval-after-load 'golden-ratio
   (setq golden-ratio-max-width 120
@@ -658,85 +602,155 @@ With two PREFIX arguments, write out the day and month name."
 									 xref--xref-buffer-mode
 									 speedbar-mode)))
 
-;; {{ project
-(defun project-try-npm (dir)
-  "My project-try for JavaScript (Nodejs) projects.
-By locating package.json around DIR."
-  (when-let ((root (and (memq major-mode '(js-mode js2-mode rjsx-mode))
-						(locate-dominating-file dir "package.json"))))
-	(cons 'npm root)))
-
-(cl-defmethod project-root ((project (head npm)))
-  "Method of getting `project-root' for npm PROJECT."
-  (cdr project))
-
-(defun project-try-lisp (dir)
-  "My project-try for CommonLisp (asdf) projects.
-By locating package.json around DIR."
-  (when-let ((root (and (memq major-mode '(lisp-mode))
-						(locate-dominating-file
-						 dir
-						 (lambda (dir)
-						   (ignore-error (directory-files dir nil "asd")))))))
-	(cons 'lisp root)))
-
-(cl-defmethod project-root ((project (head lisp)))
-  "Method of getting `project-root' for Lisp PROJECT."
-  (cdr project))
-
 (with-eval-after-load 'project
+  (add-to-list 'project-find-functions 'project-try-makefile)
   (add-to-list 'project-find-functions 'project-try-npm)
-  (add-to-list 'project-find-functions 'project-try-lisp))
-;; }}
+  (add-to-list 'project-find-functions 'project-try-lisp)
+  (add-to-list 'project-find-functions 'project-try-readme)
 
-;; {{ cache files
-(use-package no-littering :ensure t
+  (setq project-find-functions
+        '(project-try-readme project-try-lisp project-try-npm
+                             project-try-makefile project-try-vc))
+
+  (defun project-try-readme (dir)
+	"Project by readme files in, within DIR."
+	(when-let ((root (locate-dominating-file dir "readme.org")))
+	  (cons 'readme root))
+	;; (zerop
+	;;  (shell-command
+	;;   (format
+	;;    "find %s -iname readme.* -iname *.org -o -iname *.md"
+	;;    (shell-quote-argument default-directory))))
+	)
+
+  (cl-defmethod project-root ((project (head readme)))
+	"Method of getting `project-root' for makefile PROJECT."
+	(cdr project))
+
+  (defun project-try-makefile (dir)
+	"My project for Makefile based projects, within DIR."
+	(when-let ((root (locate-dominating-file dir "Makefile")))
+	  (cons 'makefile root)))
+
+  (cl-defmethod project-root ((project (head makefile)))
+	"Method of getting `project-root' for makefile PROJECT."
+	(cdr project))
+
+  (defun project-try-npm (dir)
+	"My project-try for JavaScript (Nodejs) projects.
+  By locating package.json around DIR."
+	(when-let ((root (and (memq major-mode
+								'(js-mode js2-mode rjsx-mode))
+						  (locate-dominating-file dir "package.json"))))
+	  (cons 'npm root)))
+
+  (cl-defmethod project-root ((project (head npm)))
+	"Method of getting `project-root' for npm PROJECT."
+	(cdr project))
+
+  (defun project-try-lisp (dir)
+	"My project-try for CommonLisp (asdf) projects.
+  By locating package.json around DIR."
+	(when-let ((root (and (memq major-mode '(lisp-mode))
+						  (locate-dominating-file
+						   dir
+						   (lambda (dir)
+							 (ignore-error
+								 (directory-files dir nil "asd")))))))
+	  (cons 'lisp root)))
+
+  (cl-defmethod project-root ((project (head lisp)))
+	"Method of getting `project-root' for Lisp PROJECT."
+	(cdr project)))
+
+(defun recover-this-file-backups ()
+  "Like `recover-this-file', but using backups."
+  (interactive)
+  (or buffer-file-name
+	  (user-error "This buffer is not visiting a file"))
+
+  (let* ((file-name (make-backup-file-name-1 buffer-file-name))
+		 (default-directory (file-name-directory file-name)))
+	(find-file
+	 (completing-read
+	  "Backup: "
+	  (directory-files
+	   default-directory
+	   nil
+	   (regexp-quote (file-name-nondirectory file-name)))))))
+
+;; (defun clean-backup-dir ()
+;;   "Delete the files in the backup dir that are not in the list of `recentf-list'."
+;;   (cl-labels ((aux (x)
+;; 		   (let ((x (subst-char-in-string ?! ?/ x)))
+;; 			 (substring (subst-char-in-string ?! ?/ x)
+;; 				0 (- (length x) 5)))))
+;; 	(mapcar (lambda (dir-pair)
+;; 		  (let* ((dir (cdr dir-pair))
+;; 			 (files-to-delete
+;; 			  (cl-set-difference
+;; 			   (mapcar #'aux (butlast (directory-files dir) 2))
+;; 			   recentf-list
+;; 			   :test 'string=)))
+;; 		(dolist (f files-to-delete)
+;; 		  (dolist (f (directory-files
+;; 				  dir
+;; 				  t
+;; 				  (concat "^" (file-name-nondirectory f) ".*")))
+;; 			(delete-file f)))
+;; 		(cons (car dir-pair)
+;; 			  (length files-to-delete))))
+;; 		backup-directory-alist)))
+
+(use-package simple-mark
+  :init
+  (defvar mark-ring-i nil)
+  (defun forward-mark ()
+	(if mark-ring-i
+		(setq mark-ring-i (min (1- (length global-mark-ring)) (1+ mark-ring-i)))
+	  (setq mark-ring-i 0))
+	(goto-marker (elt global-mark-ring mark-ring-i)))
+  (defun backward-mark ()
+	(if (integerp mark-ring-i)
+		(setq mark-ring-i (max 0 (1- mark-ring-i)))
+	  (setq mark-ring-i (length global-mark-ring)))
+	(goto-marker (elt global-mark-ring mark-ring-i)))
+  (provide 'simple-mark))
+
+(defun goto-marker (marker)
+  (let* ((buffer (marker-buffer marker))
+		 (position (marker-position marker)))
+	(set-buffer buffer)
+	(or (and (>= position (point-min))
+			 (<= position (point-max)))
+		(if widen-automatically
+			(widen)
+		  (error "Global mark position is outside accessible part of buffer %s"
+				 (buffer-name buffer))))
+	(goto-char position)
+	(switch-to-buffer buffer)))
+
+(defun unpop-global-mark-command ()
+  "Unpop off mark ring.  Does nothing if mark ring is empty."
+  (interactive)
+  (when global-mark-ring
+	(let ((marker (car (last global-mark-ring))))
+	  (setq global-mark-ring (cons marker (nbutlast global-mark-ring)))
+	  (goto-marker marker))))
+
+;; this is global mode only package ..... and that sucks.
+(use-package beacon :ensure t
   :config
-  (with-eval-after-load 'recentf
-	(add-to-list 'recentf-exclude no-littering-var-directory)
-	(add-to-list 'recentf-exclude no-littering-etc-directory))
-  (setq backup-directory-alist
-		`((".*" . ,(no-littering-expand-var-file-name "backups/")))
-		auto-save-file-name-transforms
-		`((".*" ,(no-littering-expand-var-file-name "auto-save/") t))))
-;; }}
-
-(defun clean-backup-dir ()
-  "Delete the files in the backup dir that are not in the list of `recentf-list'."
-  (cl-labels ((aux (x)
-		   (let ((x (subst-char-in-string ?! ?/ x)))
-			 (substring (subst-char-in-string ?! ?/ x)
-				0 (- (length x) 5)))))
-	(mapcar (lambda (dir-pair)
-		  (let* ((dir (cdr dir-pair))
-			 (files-to-delete
-			  (cl-set-difference
-			   (mapcar #'aux (butlast (directory-files dir) 2))
-			   recentf-list
-			   :test 'string=)))
-		(dolist (f files-to-delete)
-		  (dolist (f (directory-files
-				  dir
-				  t
-				  (concat "^" (file-name-nondirectory f) ".*")))
-			(delete-file f)))
-		(cons (car dir-pair)
-			  (length files-to-delete))))
-		backup-directory-alist)))
-
-(use-package mini-frame
-  :ensure nil
-  :disabled
-  :config
-  (setq mini-frame-show-parameters
-	'((top . 0.4)
-	  (width . 0.8)
-	  (left . 0.5))))
-
-;; undo highlight, similar to evil-goggles
-(use-package undo-hl
-  :defer t
-  :straight (undo-hl :type git :host github :repo "casouri/undo-hl"))
+  (setq beacon-blink-when-point-move-vertically nil
+		beacon-blink-when-focused nil)
+  (add-to-list 'beacon-dont-blink-major-modes 'eshell-mode)
+  (add-hook 'beacon-dont-blink-predicates
+            (defun was-wheel-scroll-p ()
+			  (memq (event-basic-type last-command-event)
+					'(wheel-up wheel-down wheel-right wheel-left))))
+  ;; :init
+  ;; (remove-hook 'prog-mode-hook 'beacon-mode)
+  )
 
 (use-package elfeed :ensure t
   :disabled
@@ -790,83 +804,165 @@ By locating package.json around DIR."
 			  (setq-local line-spacing 5)))
   :init (global-set-key [?\C-x ?w] 'elfeed))
 
-(use-package newsticker
-  :config
-  (setq newsticker-retrieval-interval -1)
-  (setq newsticker-groups
-	'("Feeds" "asahilinux" "sbcl"
-	  ("News" "hltv" "hackernews")
-	  ("reddit"
-	   "reddit lisp"
-	   "reddit emacs"
-	   "reddit philosophy"
-	   "reddit reverse-eng"
-	   "reddit programming")
-	  "programming blog"
-	  "Emacs Wiki")
-	newsticker-url-list
-	'(;; programming
-		  ("hackernews" "https://news.ycombinator.com/rss")
-		  ("programming blog" "https://buttondown.email/hillelwayne/rss")
+(use-package guitar-tab
+  :init
+  (defun guitar-tab-auto-fill ()
+	;; (org-table-get-field)
+	(when (save-excursion
+			(skip-chars-backward "^|")
+			(looking-at-p "[ ]+|"))
+	  (org-table-get-field nil " - ")))
 
-		  ;; reddit
-		  ("reddit programming" "https://www.reddit.com/r/programming.rss")
-		  ("reddit reverse-eng" "https://www.reddit.com/r/ReverseEngineering.rss")
-		  ("reddit philosophy" "https://www.reddit.com/r/philosophy/top.rss?t=week")
-		  ("reddit emacs" "https://www.reddit.com/r/emacs/top.rss?t=week")
-		  ("reddit lisp" "https://www.reddit.com/r/lisp/top.rss?t=week")
+  (defun guitar-tab-next-entry ()
+	"Go below first (6 times), then right across."
+	(interactive)
+	(org-table-maybe-recalculate-line)
+	(if (and org-table-automatic-realign
+			 org-table-may-need-update)
+		(org-table-align))
+	;; (guitar-tab-auto-fill)
+	(if (looking-at-p "[ ]*\n")
+		;; goto next table if exceeding fill-column
+		;; (if (>= (current-column) fill-column)
+		;; 	(guitar-tab-next-table))
+	    (org-table-insert-column)
+	  (let ((col (org-table-current-column)))
+		(beginning-of-line 2)
+		(unless (bolp) (insert "\n"))	;missing newline at eob
+		(when (or (not (org-at-table-p))
+				  (org-at-table-hline-p))
+		  (beginning-of-line 0)
+		  ;; (org-table-insert-row 'below)
+		  (org-table-goto-line 0)
+		  (cl-incf col 1))
+		(org-table-goto-column col)
+		(skip-chars-backward "^|\n\r")
+		(when (looking-at " ")
+		  (forward-char)))))
 
-		  ("hltv" "https://www.hltv.org/rss/news")
-		  ;; how to get youtube channel rss
-		  ;; window["ytInitialData"].metadata.channelMetadataRenderer.rssUrl
-		  ;; ("https://www.youtube.com/feeds/videos.xml?channel_id=UCTkXRDQl0luXxVQrRQvWS6w" dream youtube)
-		  ;; blog
-		  ("sbcl" "https://mstmetent.blogspot.com/feeds/posts/default?alt=rss")
-		  ("asahilinux" "https://asahilinux.org/blog/index.xml"))))
+  (defun guitar-tab-prev-entry ()
+	"Go above first (6 times), then right across."
+	(interactive)
+	(org-table-maybe-recalculate-line)
+	(if (and org-table-automatic-realign
+			 org-table-may-need-update)
+		(org-table-align))
+	(let ((col (org-table-current-column)))
+	  (beginning-of-line 0)
+	  ;; (unless (bolp) (insert "\n"))	;missing newline at eob
+	  (when (or (not (org-at-table-p))
+				(org-at-table-hline-p))
+		(beginning-of-line 2)
+		;; goto end of table
+		(while (or (org-at-table-p)
+				   (org-at-table-hline-p))
+		  (beginning-of-line 2))
+		(beginning-of-line 0)
+		(cl-decf col 1))
+	  (org-table-goto-column col)
+	  ;; (skip-chars-forward "^|\n\r")
+	  ;; (when (looking-at " ")
+	  ;; 	(backward-char))
+	  ))
 
-(use-package eaf
-  :defer t
-  :load-path "~/.emacs.d/site-lisp/emacs-application-framework"
-  ;; :straight (eaf :type git :host github
-  ;;		 :repo "emacs-eaf/emacs-application-framework"
-  ;;		 :files ("*.el" "*.py" "core" "app")
-  ;;		 ;; :pre-build (("python3" "install-eaf.py" "--install" "pdf-viewer" "--ignore-sys-deps"))
-  ;;		 )
-  :custom
-  ; See https://github.com/emacs-eaf/emacs-application-framework/wiki/Customization
-  (eaf-browser-continue-where-left-off t)
-  (eaf-browser-enable-adblocker t)
-  ;; (browse-url-browser-function 'eaf-open-browser)
-  :config
-  (defalias 'browse-web #'eaf-open-browser)
-  ;; (eaf-bind-key scroll_up "C-n" eaf-pdf-viewer-keybinding)
-  ;; (eaf-bind-key scroll_down "C-p" eaf-pdf-viewer-keybinding)
-  ;; (eaf-bind-key take_photo "p" eaf-camera-keybinding)
-  (use-package eaf-terminal :defer t
-	:commands (eaf-open-terminal)
-	:config
-	(eaf-bind-key yank_text "C-y" eaf-terminal-keybinding))
-  (use-package eaf-music-player :defer t :commands (eaf-open-music-player))
-  (define-key eaf-mode-map* "q" 'quit-window)
+  (defun guitar-tab-prev-table ()
+	(interactive)
+	(while (not (or (org-at-table-p)
+					(org-at-table-hline-p)))
+	  (forward-line -1))
+	(while (or (org-at-table-p)
+			   (org-at-table-hline-p))
+	  (beginning-of-line -1))
+	(beginning-of-line 2)				; forward ~2 lines
+	(org-table-next-field))
 
-  (with-eval-after-load 'evil
-	(evil-set-initial-state 'eaf-mode 'emacs)))
+  (defun guitar-tab-next-table ()
+	"Go to the start of next table"
+	(interactive)
+	(while (or (org-at-table-p)
+			   (org-at-table-hline-p))
+	  (forward-line 1))
+	(forward-line 1)
 
-(defun posframe-quick-view-file (&optional file)
-  (interactive (list (read-file-name "File: ")))
-  (if (and (stringp file)
-		   (posframe-workable-p))
-	  (let ((buf (find-file file)))
-		(posframe-show buf
-					   :position (point)
-					   ;; :poshandler 'posframe-poshandler-window-center
-					   :max-height (* 0.8 (window-height (get-buffer-window))))
-		(set-transient-map
-		 (make-sparse-keymap)
-		 nil
-		 (lambda ()
-		   (posframe-delete buf))))
-	(user-error "Unable to show posframe")))
+	(if (or (org-at-table-p)
+			(org-at-table-hline-p))
+		(progn (beginning-of-line)
+			   (org-table-next-field))
+	  (when (eobp) (insert "\n"))	;missing newline at eob
+	  (condition-case err
+		  (org-next-block 1 nil "^[ \t]*|")
+		(user-error
+		 ;; insert new table her
+		 (insert (make-string 6 ?|))
+		 (cl-loop repeat (- 6 1)
+				  do (insert ?\n ?|))
+		 (org-table-align)
+		 ))))
+
+  (defun guitar-tab-insert-column (char)
+	(interactive (list (event-basic-type last-command-event)))
+	(pcase-let ((`(,i . ,j)
+				 (guitar-tab-cusor-pos-to-ij)))
+	  ;; (guitar-tab-align)
+	  (save-excursion
+		(dotimes (_ 5)
+		  (insert char)
+		  ;; (forward-line 1)
+          (org-table-next-row))
+		(insert char))))
+
+  (defun guitar-tab-in-listp ()
+	(save-excursion
+	  (beginning-of-line)
+	  (looking-at-p "^[ \t](")))
+
+  (defun guitar-tab--list-n? (fn)
+	"Run FN n? times until scan-error.
+FN is a list traversal operation."
+	(and (guitar-tab-in-listp)
+		 (cl-loop for j from 0
+				  while (condition-case err (progn (funcall fn 1) t)
+						  (scan-error nil))
+				  finally return j)))
+
+  (defun guitar-tab-cusor-pos-to-ij ()
+	;; escape to top level
+	(save-excursion
+      (and (guitar-tab-in-listp)
+		   (let* ((j (guitar-tab--list-n? 'backward-sexp))
+				  (i (progn (backward-char)
+						    (guitar-tab--list-n? 'backward-sexp))))
+		     (cons i j)))))
+
+  (defvar guitar-tab-mode-map
+	(let ((map (make-sparse-keymap)))
+	  (define-key map [?f] 'guitar-tab-next-entry)
+	  (define-key map [?b] 'guitar-tab-prev-entry)
+	  (define-key map [?n] 'guitar-tab-next-table)
+	  (define-key map [?p] 'guitar-tab-prev-table)
+	  (define-key map [?/] 'guitar-tab-insert-column)
+	  map))
+
+  (define-minor-mode guitar-tab-mode
+	""
+	:global nil
+	:init-value nil
+	;; :keymap guitar-tab-mode-map
+    ;; (if guitar-tab-mode
+    ;;     (let ((org-modern-tag nil)
+    ;;           (org-modern-block nil)
+    ;;           (org-modern-checkbox nil)
+    ;;           (org-modern-todo nil)
+    ;;           (org-modern-priority nil)
+    ;;           (org-modern-todo nil)
+    ;;           (org-modern-table t)
+    ;;           (org-modern-table-vertical 1))
+    ;;       (org-modern-mode 1))
+    ;;   (org-modern-mode -1))
+    )
+  ;; (define-derived-mode org-mode )
+
+  (provide 'guitar-tab))
 
 (use-package skeletor :ensure t
   :defer t
@@ -876,8 +972,8 @@ By locating package.json around DIR."
 	:title "Verilog"
 	:no-license? t
 	:no-git? t)
-  (skeletor-define-template "gerbil"
-	:title "Gerbil"
+  (skeletor-define-template "vhdl"
+	:title "VHDL"
 	:no-license? t
 	:no-git? t)
   (defun skeletor-underscore-proj-name ()

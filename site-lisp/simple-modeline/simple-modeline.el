@@ -100,7 +100,7 @@ Otherwise behave as if called interactively."
   :type '(list (repeat :tag "Left aligned" function)
                (repeat :tag "Right aligned" function))
   :package-version '(simple-modeline . "1.2"))
-;;
+
 (make-variable-buffer-local 'simple-modeline-segments)
 (put 'simple-modeline-segments 'safe-local-variable 'consp)
 

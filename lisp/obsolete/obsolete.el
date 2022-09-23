@@ -406,3 +406,57 @@ f;; 07-22-2022, using emacs-surround now
 ;;   (add-to-list 'wrap-region-mode-pairs '(sh-mode (?$ . ("$(" . ")")))))
 
 
+(use-package eaf
+  :defer t
+  :load-path "~/.emacs.d/site-lisp/emacs-application-framework"
+  ;; :straight (eaf :type git :host github
+  ;;		 :repo "emacs-eaf/emacs-application-framework"
+  ;;		 :files ("*.el" "*.py" "core" "app")
+  ;;		 ;; :pre-build (("python3" "install-eaf.py" "--install" "pdf-viewer" "--ignore-sys-deps"))
+  ;;		 )
+  :custom
+  ;; See https://github.com/emacs-eaf/emacs-application-framework/wiki/Customization
+  (eaf-browser-continue-where-left-off t)
+  (eaf-browser-enable-adblocker t)
+  ;; (browse-url-browser-function 'eaf-open-browser)
+  :config
+  (defalias 'browse-web #'eaf-open-browser)
+  ;; (eaf-bind-key scroll_up "C-n" eaf-pdf-viewer-keybinding)
+  ;; (eaf-bind-key scroll_down "C-p" eaf-pdf-viewer-keybinding)
+  ;; (eaf-bind-key take_photo "p" eaf-camera-keybinding)
+  (use-package eaf-terminal :defer t
+	:commands (eaf-open-terminal)
+	:config
+	(eaf-bind-key yank_text "C-y" eaf-terminal-keybinding))
+  (use-package eaf-music-player :defer t :commands (eaf-open-music-player))
+  (define-key eaf-mode-map* "q" 'quit-window)
+
+  (with-eval-after-load 'evil
+	(evil-set-initial-state 'eaf-mode 'emacs)))
+
+;; 09/06/22, unused function
+
+(defun comment-and-copy-line (beg end)
+  "Copy region BEG to END below and comment it.
+Right above if not commented already."
+  (interactive (region-or-line-beg-end-points current-prefix-arg))
+  (let* ((str (buffer-substring-no-properties beg end))
+         (commented (comment-only-p beg end))
+         (point
+          (save-excursion
+            (goto-char end)
+
+            (unless commented
+              (comment-region beg end))
+
+            (unless (s-suffix? "\n" str)
+              (evil-insert-newline-below)
+              (indent-according-to-mode))
+
+            (prog1 (point)
+              (insert str)))))
+    ;; (goto-char point)
+    (goto-char point)
+    (when commented
+      (uncomment-region point
+                        (+ point (length str))))))

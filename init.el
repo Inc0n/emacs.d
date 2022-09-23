@@ -23,13 +23,13 @@
 
 (add-hook 'emacs-startup-hook
           (lambda ()
-			;; (set-frame-font "Menlo 13" nil t)
 			(set-face-attribute 'default nil :height 130)
             ;; reset the gc-cons-threshold back to a smaller value
             (setq gc-cons-threshold my/normal-gc-cons-threshold)
             (setq gc-cons-percentage 0.1)
             (message "startup time: %s, gcs-done=%d"
                      (emacs-init-time) gcs-done)
+			(setq custom-file (my/emacs-d "custom.el"))
 			(when (file-exists-p custom-file)
 			  (load custom-file))))
 
@@ -41,8 +41,6 @@
   (expand-file-name path user-emacs-directory))
 
 (defvar my/site-lisp-dir (my/emacs-d "site-lisp") "My site directory.")
-
-(setq custom-file (my/emacs-d "custom.el"))
 
 ;; font setting after window-system is loaded
 ;; (when (x-list-fonts "Anonymous Pro-13")
@@ -99,7 +97,7 @@
   (require 'init-shell)
   (require 'init-browse)
   ;; (require 'init-tags)
-  
+
   ;; @see https://github.com/hlissner/doom-emacs/wiki/FAQ
   ;; Adding directories under "site-lisp/" to `load-path' slows
   ;; down all `require' statement. So we do this at the end of startup
@@ -114,3 +112,5 @@
 ;;; End:
 (put 'erase-buffer 'disabled t)
 (put 'list-timers 'disabled nil)
+(put 'list-threads 'disabled nil)
+

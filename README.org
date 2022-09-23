@@ -1,4 +1,4 @@
-* A fast and robust Emacs setup
+* A +fast+ and robust Emacs setup
 my personal setup that's rebased off [[https://github.com/redguardtoo/emacs.d][redguardtoo/emacs.d]] 
 
 * Config resources
@@ -10,18 +10,37 @@ https://github.com/hick/emacs-chinese
 
 * Shell
 
-https://www.reddit.com/r/emacs/comments/sbdmr7/improving_shell_in_emacs/
-
+- *eshell*, current shell
 - [[https://github.com/akermu/emacs-libvterm][emacs-libvterm]]
   a fast external terminal emulator
 - shx
   “shell-extras” extends comint-mode in Emacs, that allows image display
 - [[https://gitlab.com/niklaseklund/dtache][dtache]]
   Detach and manage processes from Emacs
+https://www.reddit.com/r/emacs/comments/sbdmr7/improving_shell_in_emacs/
 
 * Themes
 
-- modus themes by Protesilaos
+- [[https://protesilaos.com/emacs/modus-themes][modus themes]] by Protesilaos
   A high-contrast theme
-  https://protesilaos.com/emacs/modus-themes
+- [[https://protesilaos.com/emacs/ef-themes][ef-themes]] by Protesilaos
+  Like modus but much more colorful
 - doom-themes 
+
+* Modeline
+Started off with default emacs mode-line, then my own simple-modeline, which is stole from https://github.com/gexplorer/simple-modeline.
+The most stand out modification was evil modal, which in an incident, buffer modification state was represent also by "梁" on some sort of conundrum, which I kept this beautiful mistake.
+Now I am back on vanilla mode-line.
+
+* Fonts
+** Monospaced
+- Menlo, Apple default
+- SF Mono, apple terminal font
+
+Bitmap, the resolution of it, it is less pleasant as I discovered after some use compared to other normal monospaced font. 
+- [[https://github.com/slavfox/Cozette][Cozette]], bitmap programming font
+- [[https://github.com/IdreesInc/Monocraft][Monocraft]], minecraft x programming font
+
+** Sans serif
+- Dejavu Sans/Serif
+- Verdana

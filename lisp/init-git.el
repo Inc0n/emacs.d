@@ -3,6 +3,10 @@
 
 (require-package 'magit)
 
+(with-eval-after-load 'magit
+  ;; (define-key magit-mode-map [C-tab] 'nil)
+  )
+
 ;; ;; {{ Solution 1: disable all vc backends
 ;; @see http://stackoverflow.com/questions/5748814/how-does-one-disable-vc-git-in-emacs
 ;; (setq vc-handled-backends ())

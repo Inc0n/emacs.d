@@ -76,84 +76,6 @@ You still need modify `package-archives' in \"init-elpa.el\" to PERMANENTLY use 
         ;; Instead let's just throw a warning
         (warn (format "Package not in archive in `require-package': %s" package)))))
 
-;; List of visible packages from melpa-unstable (http://melpa.org).
-;; Please add the package name into `my/melpa-include-packages'
-;; if it's not visible after `list-packages'.
-(defvar my/melpa-include-packages
-  '(ace-window               ; lastest stable is released on year 2014
-    ace-pinyin
-    
-    nov
-    nov-xwidget
-    bbdb
-    native-complete
-    company-native-complete
-    js2-mode           ; need new features
-    git-timemachine    ; stable version is broken when git rename file
-    
-    command-log-mode
-    ;; lsp-mode ; stable version has performance issue, but unstable version sends too many warnings
-    edit-server ; use Emacs to edit textarea in browser, need browser addon
-    package-lint                        ; for melpa pull request only
-    typescript-mode ; the stable version lacks important feature (highlight function names)
-
-    rjsx-mode                          ; fixed the indent issue in jsx
-    julia-mode
-
-    cdlatex
-    auctex
-
-    ibuffer-vc
-    which-key
-
-    js-doc
-    wgrep
-
-    company                  ; I won't wait another 2 years for stable
-    simple-httpd
-    ;; findr
-    mwe-log-commands
-    db
-    web
-    legalese
-    htmlize
-    pyim-basedict
-    pyim-wbdict
-    scratch
-    session
-    inflections
-    lua-mode
-    pomodoro
-    packed
-    keyfreq
-    gitconfig-mode
-    w3m
-    zoutline
-    company-c-headers
-    company-statistics
-    ;; toggle latex fragment
-    org-fragtog
-    use-package
-    vterm
-    maple-minibuffer
-    ;; osx
-    haxe-mode
-    applescript-mode
-    kotlin-mode
-    gradle-mode
-    lsp-grammarly
-    grip-mode
-    ;;
-    jupyter
-    cal-china-x
-    face-up ;; for racket mode
-    racket-mode
-    undo-hl
-    stimmung-themes)
-  "Packages to install from melpa-unstable.")
-
-;; (defvar my/melpa-stable-banned-packages nil "Banned packages from melpa-stable.")
-
 ;;; Packages
 
 (require-package 'use-package)
@@ -177,8 +99,6 @@ You still need modify `package-archives' in \"init-elpa.el\" to PERMANENTLY use 
 (require-package 'cpputils-cmake)
 (require-package 'bbdb)
 
-;; rvm-open-gem to get gem's code
-(require-package 'rvm)
 ;; C-x r l to list bookmarks
 (require-package 'git-link)
 

@@ -42,7 +42,7 @@
 
 (autoload #'gtags-mode "gtags" "Loads the gtags." nil)
 ;; (when generic-tag-enable
-;;       (util/ensure 'etags)
+;;       (require 'etags)
 ;;       (when (and (null tags-file-name)
 ;;                  (null tags-completion-table)
 ;;                  ;; (not (y-or-n-p "Keep current tags? "))
