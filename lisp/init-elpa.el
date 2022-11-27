@@ -82,11 +82,8 @@ You still need modify `package-archives' in \"init-elpa.el\" to PERMANENTLY use 
 
 (require-package 'async)
 
-(require-package 'popup) ; some old package need it
-;; (require-package 'fringe-helper)
 (require-package 'unfill)
 
-(require-package 'request)
 ;; (require-package 'jump)
 ;; (require-package 'findr)
 ;; (require-package 'nvm)
@@ -95,6 +92,7 @@ You still need modify `package-archives' in \"init-elpa.el\" to PERMANENTLY use 
 (require-package 'git-timemachine)
 
 (require-package 'command-log-mode)
+(setq-default command-log-mode-key-binding-open-log nil)
 
 (require-package 'cpputils-cmake)
 (require-package 'bbdb)

@@ -1,7 +1,11 @@
 ;; -*- coding: utf-8; lexical-binding: t; -*-
+
 ;;; Code:
 ;; some cool org tricks
 ;; @see http://emacs.stackexchange.com/questions/13820/inline-verbatim-and-code-with-quotes-in-org-mode
+
+;; How to make flymake less angry
+(eval-when-compile (require 'use-package))
 
 ;; Org clock
 
@@ -27,24 +31,6 @@
 ;;   (define-key org-clock-mode-line-map [header-line mouse-2] #'org-clock-goto)
 ;;   (define-key org-clock-mode-line-map [header-line mouse-1] #'org-clock-menu))
 
-(use-package langtool :ensure t
-  :init
-  (setq langtool-bin "languagetool")
-  ;; (add-hook 'flycheck-mode-hook #'my/langtool-setup)
-  (use-package langtool-ignore-fonts :ensure t
-    :disabled
-    :config
-    ;; ignore latex
-    (langtool-ignore-fonts-add 'org-mode
-			       '(;; font-lock-comment-face
-				 font-latex-math-face
-				 font-latex-string-face))))
-
-(use-package flycheck-languagetool :ensure t
-  :init
-  (setq flycheck-languagetool-server-jar "/opt/homebrew/opt/languagetool/libexec/languagetool-server.jar")
-  (setq flycheck-checker-error-threshold nil))
-
 (add-hook 'org-mode-hook 'org-mode-hook-setup)
 (defun org-mode-hook-setup ()
   "My org mode setup."
@@ -54,11 +40,10 @@
       (progn
         (font-lock-mode -1)				; yes disable this
         (when (y-or-n-p "Turn on so long minor mode?")
-          (turn-on-so-long-minor-mode)))
+          (so-long-minor-mode)))
     (org-appear-mode 1)
-    (org-superstar-mode 1)
-    (org-modern-mode -1)
-    (flycheck-languagetool-setup)
+    ;; (org-superstar-mode 1)
+    (org-modern-mode 1)
     (setq prettify-symbols-alist
           (append prettify-symbols-alist
                   `(("->" . ?→)
@@ -85,16 +70,14 @@
   ;; org-startup-options
   (setq org-startup-with-latex-preview nil
         org-startup-indented t
-        org-startup-folded 'show2levels
-		org-hide-leading-stars nil
-        org-pretty-entities t)
+        org-startup-folded 'show2levels)
   ;; org
   (setq org-tags-column -50
         org-scanner-tags '(noexport)
 
         org-outline-path-complete-in-steps t
         org-todo-keywords
-        '((sequence "TODO(t/!)" "STARTED(s@)" "NEXT(n@)" "HOLD(h@/!)" "|" "DONE(d@/!)")
+        '((sequence "TODO(t@/!)" "NEXT(n@)" "STARTED(s@)" "HOLD(h@/!)" "|" "DONE(d@/!)")
           (sequence "PROJECT(p@)" "|" "CANCELLED(c@/!)"))
         org-imenu-depth 5)
 
@@ -106,7 +89,7 @@
         org-fast-tag-selection-single-key 'expert
         org-catch-invisible-edits 'smart ; try not to accidently do weird stuff in invisible regions
         org-return-follows-link nil
-        org-log-state-notes-into-drawer nil
+        org-log-state-notes-into-drawer t
         org-special-ctrl-a/e t
         org-special-ctrl-k t
         org-use-sub-superscripts t
@@ -121,10 +104,26 @@
 
   (define-key org-mouse-map [mouse-2] nil) ; disable `org-open-at-mouse'
 
-  (define-keys org-mode-map
-    [C-return] 'my/org-insert
+  (util:define-keys org-mode-map
+	[C-return] 'my/org-insert
     [?_] 'my/sub-superscript
-    [?^] 'my/sub-superscript)
+    [?^] 'my/sub-superscript
+
+    [?\C-\M-u] 'org-up-element
+    [?\C-\M-e] 'org-next-block
+    [?\C-\M-n] 'org-next-visible-heading
+    [?\C-\M-p] 'org-previous-visible-heading
+    [?\C-\M-d] 'org-forward-heading-same-level
+
+    [?\M-N] 'org-move-subtree-down
+    [?\M-P] 'org-move-subtree-up
+
+    [?\C->] 'org-shiftmetaright		; org-do-demote
+    [?\C-<] 'org-shiftmetaleft		; org-do-promote
+    [?\M-+] 'org-latex-pdf-count-words
+
+    ;; [?\C-c ?o ?u] 'org-update-statistics-cookies
+    [?\C-c ?o ?e] 'org-babel-execute-subtree)
 
   (defun my/sub-superscript (char)
     "Insert ^{} or _{}, when not in org-src-block."
@@ -140,12 +139,10 @@
 
   (setq org-directory "~/sources/org/agenda/")
   (setq org-agenda-files (list (concat org-directory "agenda.org")
-                               ;; I dont use this file any more
-                               ;; (concat org-directory "analysis.org")
                                (concat org-directory "daily.org")
                                (concat org-directory "refile.org")
                                (concat org-directory "projects.org")
-                               (concat org-directory "notes.org")
+                               ;; (concat org-directory "notes.org")
                                (concat org-directory "todo.org")))
   ;; latex fragments
   (setq org-highlight-latex-and-related '(native script entities))
@@ -156,12 +153,14 @@
       (warn "Install dvisvgm with tlmgr for better rendering on osx Emacs org latex fragment")))
 
   ;; org visuals
-  (setq org-fontify-todo-headline t
-        org-fontify-done-headline t
+  (setq org-fontify-todo-headline nil
+        org-fontify-done-headline nil
         org-fontify-quote-and-verse-blocks t
-        org-fontify-whole-heading-line t
+        org-fontify-whole-heading-line nil
         org-link-descriptive t
-        org-hide-emphasis-markers t
+		org-hide-emphasis-markers t		; org-appear needs this
+		org-hide-leading-stars nil
+        org-pretty-entities t
 
         ;; enable mix emphasis English and nonascii (e.g. chinese)
         org-emphasis-regexp-components
@@ -173,7 +172,8 @@
 
   ;; org latex preview scale
   ;; (plist-put org-format-latex-options :background "Transparent")
-  (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.4))
+  (setq org-format-latex-options
+		(plist-put org-format-latex-options :scale 1.4))
   (setq org-image-actual-width t
 		org-display-remote-inline-images 'cache)
 
@@ -181,6 +181,7 @@
    'org-babel-load-languages
    '((python . t)
      (jupyter . t)
+	 (haskell . t)
      (eshell . t)
      (shell . t)
      (lisp . t)
@@ -188,22 +189,23 @@
      (gdb . t)
      (calc . t)))
 
-  ;; Add box around org-todo, to highlight different if background theme
-  ;; too similar
+  ;; Add box around org-todo, to highlight different if background
+  ;; theme too similar
   ;; (set-face-attribute 'org-todo nil :box `(:line-width 1))
 
   (require 'org-tempo)
 
-  (custom-set-faces
-   '(org-document-title ((t :height 1.2)))
-   '(org-level-1 ((t :height 1.2 :inherit outline-1)))
-   '(org-level-2 ((t :height 1.15 :inherit outline-2)))
-   '(org-level-3 ((t :height 1.12 :inherit outline-3)))
-   '(org-level-4 ((t :height 1.09 :inherit outline-4)))
-   '(org-level-5 ((t :height 1.06 :inherit outline-5)))
-   '(org-level-6 ((t :height 1.03 :inherit outline-6)))
-   '(org-level-7 ((t :height 1.03 :inherit outline-7)))
-   '(org-level-8 ((t :inherit outline-8))))
+  ;; deprecate in favor of ef-themes-heading
+  ;; (custom-set-faces
+  ;;  '(org-document-title ((t :height 1.2)))
+  ;;  '(org-level-1 ((t :height 1.2 :inherit outline-1)))
+  ;;  '(org-level-2 ((t :height 1.15 :inherit outline-2)))
+  ;;  '(org-level-3 ((t :height 1.12 :inherit outline-3)))
+  ;;  '(org-level-4 ((t :height 1.09 :inherit outline-4)))
+  ;;  '(org-level-5 ((t :height 1.06 :inherit outline-5)))
+  ;;  '(org-level-6 ((t :height 1.03 :inherit outline-6)))
+  ;;  '(org-level-7 ((t :height 1.03 :inherit outline-7)))
+  ;;  '(org-level-8 ((t :inherit outline-8))))
 
   (defun my/latex-auto-ref-link-export (path _desc backend channel)
     "Exporting link using autoref of PATH for latex BACKEND."
@@ -234,6 +236,9 @@
 		(re-search-forward "\r?\n\r?\n")
 		(buffer-substring-no-properties (point) (point-max))))))
 
+(with-eval-after-load 'org-faces
+  (setq org-cycle-level-faces nil))
+
 (with-eval-after-load 'ob-core
   ;; fix jupyter ANSI color sequence
   ;; @see https://github.com/nnicandro/emacs-jupyter/issues/366
@@ -260,6 +265,7 @@
           ("pi" . "3.14159265358979323846"))))
 
 (with-eval-after-load 'org-src
+  (define-key org-src-mode-map "\C-c\C-c"'org-edit-src-exit)
   (add-to-list 'org-src-block-faces '("latex" (:inherit default :extend t)))
   (setq org-src-fontify-natively t
         org-src-preserve-indentation t
@@ -267,15 +273,21 @@
 
 (with-eval-after-load 'org-refile
   ;; Refile targets include this file and any file contributing to the agenda - up to 5 levels deep
-  (setq org-refile-targets '(("projects.org" :regexp . "\\(?:\\(?:Note\\|Task\\)s\\)")
-			     ("agenda.org" :regexp . "Past"))
+  (setq org-refile-targets
+		'(("projects.org" :regexp . "\\(?:\\(?:Note\\|Task\\)s\\)")
+		  ("agenda.org" :regexp . "Past"))
         org-refile-use-outline-path 'file))
 
 (with-eval-after-load 'ob-python
   (setq org-babel-python-command "python3"))
 
 (require-package 'ob-async)
-(require-package 'jupyter)
+(use-package jupyter :ensure t :defer t)
+
+(with-eval-after-load 'jupyter-org-extensions
+  ;; disable bad key bind,
+  ;; (define-key jupyter-org-interaction-mode-map [remap jupyter-org-hydra/body] 'ignore)
+  (define-key jupyter-org-interaction-mode-map "\C-ch" 'nil))
 
 (defun org-capture-prepare-org-capture ()
   "Indent org capture buffer for org capture."
@@ -288,6 +300,33 @@
     ;; (org-insert-time-stamp (org-current-time) nil 'inactive)
     ;; (org-time-stamp-inactive '(16))
     (org-indent-region (point-min) (point-max))))
+
+(defun my/org-recapture-as-datetree-entry (beg end)
+  (interactive (progn (unless (region-active-p)
+						(org-mark-subtree))
+					  (prog1 (list (region-beginning)
+								   (region-end))
+						(deactivate-mark))))
+  ;; (org-heading-components)
+  (save-match-data
+	(save-excursion
+	  (when (re-search-forward org-ts-regexp-both nil t)
+		(org-element-timestamp-parser)
+		(let* ((dct
+				(decode-time (org-time-string-to-time (match-string 0))))
+			   (date (list (nth 4 dct)	; month
+						   (nth 3 dct)	; day
+						   (nth 5 dct))))
+		  ;; (setq date (list 1 1 (cl-third date)))
+		  ;; (message "%s" date)
+		  ;; (org-datetree-find-date-create d)
+		  ;; (org-open-link-from-string
+		  ;;  (format "[[*%s]]" (cl-third date)))
+		  (let ((txt (delete-and-extract-region beg end)))
+			;; org-find-olp
+			(org-datetree-file-entry-under
+			 txt
+			 date)))))))
 
 (defun my/org-capture-dated-entry ()
   "Mini version of `org-capture' in current buffer."
@@ -341,26 +380,34 @@
            ((tags "CLOSED>=\"<today>\""
                   ((org-agenda-overriding-header "Completed today")))
             (agenda ""
-                    ((org-agenda-skip-function 'org-agenda-skip-if-past-schedule)
-                     (org-deadline-warning-days 7)))
-            (todo "PROJECT"
-                  ((org-agenda-overriding-header "Projects")))
-            ;; (tags-todo "TODO")
+                    ((org-agenda-skip-function ;; 'org-agenda-skip-if-past-schedule
+					  '(org-agenda-skip-entry-if
+						'todo
+						'("DONE" "PROJECT")))
+                     ;; (org-deadline-warning-days 7)
+					 (org-agenda-span 7)
+					 (org-agenda-start-on-weekday 1)))
             (todo ""
                   ((org-agenda-overriding-header "Next")
-                   (org-agenda-skip-function 'org-agenda-skip-if-not-next)))
+                   (org-agenda-skip-function
+					'(org-agenda-skip-entry-if 'timestamp
+											   'nottodo
+											   '("STARTED" "NEXT")))))
+            (todo "PROJECT"
+                  ((org-agenda-overriding-header "Projects")))
             (todo "TODO"
                   (;; (org-agenda-format-date "")
                    (org-agenda-overriding-header "Todo")
                    (org-agenda-prefix-format
                     "  %-8:c %-10(my/org-agenda-dates-ago 'short)")
                    (org-agenda-todo-keyword-format "")
-                   (org-agenda-skip-function 'org-agenda-skip-if-not-activated)
+                   (org-agenda-skip-function ;; 'org-agenda-skip-if-not-activated
+					'(org-agenda-skip-entry-if 'timestamp))
                    (org-agenda-sorting-strategy '(tsia-down ts-up time-down))))
-            (todo "HOLD"    ((org-agenda-overriding-header "Maybe")))))
+            (todo "HOLD" ((org-agenda-overriding-header "Maybe")))))
           ("p" "Projects"
            ((todo "PROJECT" ((org-agenda-overriding-header "Projects")))
-            (todo "HOLD"    ((org-agenda-overriding-header "Maybe")))))
+            (todo "HOLD" ((org-agenda-overriding-header "Maybe")))))
 		  ("d" "Daily"
 		   (;; (agenda "" ((org-agenda-files
             ;;              (concat org-directory "daily.org"))
@@ -377,16 +424,21 @@
                     `(,(concat org-directory "daily.org")))))))
           ("b" "buffer summary"
 		   ((agenda "" ((org-agenda-files (list buffer-file-name))))))))
-  (setq org-agenda-start-on-weekday nil
-        org-agenda-span 14
-        ;; org-agenda-include-diary t
+  (setq org-agenda-include-diary nil
         ;; {{ org 8.2.6 has some performance issue. Here is the workaround.
         ;; @see http://punchagan.muse-amuse.in/posts/how-i-learnt-to-use-emacs-profiler.html
-        org-agenda-inhibit-startup t       ;; ~50x speedup
-        org-agenda-use-tag-inheritance nil ;; 3-4x speedup
+        org-agenda-inhibit-startup nil	   ; ~50x speedup
+        org-agenda-use-tag-inheritance nil ; 3-4x speedup
         ;; }}
         org-agenda-tags-column 80
-		org-agenda-window-setup 'current-window))
+		org-agenda-window-setup 'current-window)
+  (defun org-agenda-mode-setup ()
+	(toggle-truncate-lines -1)
+	(toggle-word-wrap 1)
+	(visual-fill-column-mode 1)
+	;; (visual-line-mode 1)
+	)
+  (add-hook 'org-agenda-mode-hook 'org-agenda-mode-setup))
 
 (defun my/org-agenda-dates-ago (&optional short-representation)
   "Produce a time ago reference for activated TODOs."
@@ -410,53 +462,35 @@
     "n/a"))
 
 (use-package org-modern :ensure t
-  :defer t
+  :commands (org-modern-mode)
   :config
-  (set-face-attribute 'org-modern-block-keyword
+  (set-face-attribute 'org-modern-block-name
 					  nil
 					  :weight 'bold
 					  :box '(:line-width 1))
-  (setq org-modern-footnote nil)		; its bad in table...
+  (set-face-attribute 'org-modern-label nil :inherit '(fixed-pitch))
+  (set-face-attribute 'org-modern-symbol nil :family "Iosevka Curly")
+  (setq org-modern-progress nil
+		org-modern-footnote nil)		; its bad in table...
   ;; '(((underline t)
   ;; 	 (bold t))
   ;; 	(raise 0.3) (height 1.0))
   :init
-  (setq org-modern-keyword nil		 ; "‣"
-        ;; let org-superstar stylize the stars
+  (setq org-modern-statistics nil
+		org-modern-table nil
+		org-modern-keyword nil		 ; "‣"
 		org-modern-list '((43 . "•") (45 . "–") (42 . "◦"))
-        org-modern-star nil
-        org-modern-hide-stars nil))
+        org-modern-star '("✸") ;; '("◉" "○" "◇" ?◈)
+		;; ""  ?⬘ ◉ ▣
+		org-modern-hide-stars nil))
 
 (use-package org-appear :ensure t
-  :defer t
+  :commands (org-appear-mode)
   :config
   (setq org-appear-autoemphasis t
         org-appear-autosubmarkers t
         org-appear-autoentities nil
         org-appear-autolinks t))
-
-(use-package org-superstar :ensure t
-  :defer t
-  :config
-  (set-face-attribute 'org-superstar-leading nil :foreground "dark gray")
-  :init
-  (setq-default org-superstar-prettify-item-bullets nil
-                ;; '(?◉ ?◈ ?✸ ?▣)
-                org-superstar-headline-bullets-list '(?✸) ;⬘▣
-                org-superstar-item-bullet-alist '((?+ . ?•) (?- . ?–))
-                ;; org-superstar-item-bullet-alist '((?* . ?•) (?+ . ?➤) (?- . ?ⅰ))
-                ;; '((?* . ?▶) (?+ . ?⬘) (?- . ?⬙))
-                org-superstar-leading-bullet "."
-                org-superstar-todo-bullet-alist '(("TODO" . ?○)
-                                                  ("DONE" . ?●)
-                                                  ;; org-bars over this
-                                                  ("CANCELLED" . ?☒)
-                                                  ("NEXT" . ?✪)
-                                                  ;; ("PROJECT" . ?Π)
-                                                  ("HOLD" . ?⊘)))
-  (setq org-superstar-cycle-headline-bullets nil
-		org-superstar-special-todo-items t))
-
 ;; ☐☑⦷
 
 (defun my/org-insert (&optional arg)
@@ -481,15 +515,6 @@
         ;; this happens when in a org file with no heading
         (:else (org-insert-heading-respect-content))))
 
-(defun org-agenda-skip-if-not-next ()
-  "If this function return nil, the current match should not be skipped.
-Otherwise, the function must return a position from where the search
-should be continued."
-  (if (or (member (org-get-todo-state) '("STARTED" "NEXT")))
-      ;; return nil mean should not skip
-      nil
-    (save-excursion (org-end-of-subtree t))))
-
 (defun org-agenda-skip-if-past-schedule ()
   "Returns nil, to indicate the current match should not be skipped.
 Otherwise, the function must return a position from where the search
@@ -497,25 +522,21 @@ should be continued.
 This function filter out heading that doesn't have a schedule entry.
 Or its TODO state is not \"NEXT\"."
   (when-let ((subtree-end (save-excursion (org-end-of-subtree t)))
-	     (schedule (org-entry-get nil "SCHEDULED"))
+			 (schedule (org-entry-get nil "SCHEDULED"))
              (now (time-to-seconds (current-time))))
     (when-let ((scheduled-seconds
-		(time-to-seconds
-		 (org-time-string-to-time schedule))))
+				(time-to-seconds
+				 (org-time-string-to-time schedule))))
       (and (not (string= (org-get-todo-state) "NEXT")) ;; never skip todo NEXT state
            (< scheduled-seconds now)
            subtree-end))))
 
 (defun org-agenda-skip-if-not-activated ()
   "Skip all entries if it does not have the property ACTIVATED."
-  (if-let ((subtree-end (save-excursion (org-end-of-subtree t)))
-	   (activated (org-entry-get nil "ACTIVATED")))
-      (if activated
-          nil                           ; return nil if should not skip
-        subtree-end)
-    subtree-end))
+  (and (null (org-entry-get nil "ACTIVATED"))
+	   (save-excursion (org-end-of-subtree t))))
 
-;; (define-hook-setup org-tab-first-hook :indent (org-indent-line))
+;; (util:define-hook-setup org-tab-first-hook :indent (org-indent-line))
 
 (defun org-goto-visible-element (arg)
   "Move cursor to the previous visible item or heading.
@@ -539,6 +560,9 @@ It will operate between the region from START to END."
 	    (shell-command-to-string
 	     (format "pdftotext %s /dev/stdout | wc"
 		     (org-export-output-file-name ".pdf"))))))
+
+(with-eval-after-load 'ox-odt
+  (setq org-odt-preferred-output-format "docx"))
 
 (with-eval-after-load 'ox-html
   (setq org-html-validation-link nil)
@@ -577,18 +601,18 @@ It will operate between the region from START to END."
 (with-eval-after-load 'ox-latex
   ;;
   (setq org-latex-image-default-width ".5\\textwidth"
-	org-latex-default-quote-environment "quote"
-	org-latex-subtitle-separate t
-	org-latex-subtitle-separate nil)
+		org-latex-default-quote-environment "quote"
+		org-latex-subtitle-separate t
+		org-latex-subtitle-separate nil)
 
   (add-to-list/s 'org-latex-listings-langs
                  '((text "Text")
                    (javascript "Javascript")
-		   (jupyter-python "Python")
+				   (jupyter-python "Python")
                    (asm "Assembler")
                    (calc "Python")
-		   (yaml "yaml")))
-  
+				   (yaml "yaml")))
+
   (defun my-latex-export-example-blocks (text backend info)
     "Export example blocks as custom results env."
     (when (org-export-derived-backend-p backend 'latex)
@@ -625,7 +649,7 @@ It will operate between the region from START to END."
   (setq org-latex-packages-alist
         '(("a4paper, margin=1.1in" "geometry" nil)
           "\\usepackage{amsmath, amssymb}"
-          ;; "\\usepackage[utf8]{inputenc}"
+		  "\\usepackage[utf8x]{inputenc}"
           ("" "fontspec" nil)
           ("" "xeCJK" nil)
           ;; TODO: fix this
@@ -642,7 +666,7 @@ It will operate between the region from START to END."
        0 "%d"))
 
 (use-package org-roam :ensure t
-  :after org
+  :defer t
   :init
   (setq org-roam-v2-ack t) ;; acknowledge upgrade and remove warning at startup
   (global-set-key (kbd "C-c r i") 'org-roam-node-insert)
@@ -681,41 +705,41 @@ It will operate between the region from START to END."
   :init
   (defvar ob-vterm-default-instance 0
     "Use existing vterm instance when no session parameter specified.")
-  
+
   (defun org-babel-vterm-initiate-session (&optional session _params)
     "Initiate a session named session according to params."
     (if-let* ((session
-	       (if (and session
-			(not (string= session "none")))
-		   (concat "vterm-" session)
-		 (or ob-vterm-default-instance
-		     (user-error "Specify a session name for ob-vterm"))
-		 (format "%s<%d>" vterm-buffer-name ob-vterm-default-instance)))
-	      (buf (get-buffer session))
-	      (alive (vterm-check-proc buf)))
-	buf
+			   (if (and session
+						(not (string= session "none")))
+				   (concat "vterm-" session)
+				 (or ob-vterm-default-instance
+					 (user-error "Specify a session name for ob-vterm"))
+				 (format "%s<%d>" vterm-buffer-name ob-vterm-default-instance)))
+			  (buf (get-buffer session))
+			  (alive (vterm-check-proc buf)))
+		buf
       (let ((buf (generate-new-buffer session))
-	    (setup (cdr (assq :setup _params))))
-	(save-window-excursion
-	  (with-current-buffer buf
-	    (vterm-mode)
-	    (when-let ((plist
-			(cdr (assoc setup ob-vterm-setup-alist))))
-	      (vterm-send-string
-	       (or (cl-getf plist :cmd)
-		   (user-error "cmd is not defined for %s"
-			       setup)))
-	      (setq-local vterm-use-vterm-prompt-detection-method nil
-			  term-prompt-regexp
-			  (or (cl-getf plist :prompt-regexp)
-			      (user-error "prompt regexp is not defined for %s"
-					  setup))))
-	    buf)))))
-  
+			(setup (cdr (assq :setup _params))))
+		(save-window-excursion
+		  (with-current-buffer buf
+			(vterm-mode)
+			(when-let ((plist
+						(cdr (assoc setup ob-vterm-setup-alist))))
+			  (vterm-send-string
+			   (or (cl-getf plist :cmd)
+				   (user-error "cmd is not defined for %s"
+							   setup)))
+			  (setq-local vterm-use-vterm-prompt-detection-method nil
+						  term-prompt-regexp
+						  (or (cl-getf plist :prompt-regexp)
+							  (user-error "prompt regexp is not defined for %s"
+										  setup))))
+			buf)))))
+
   (defun org-babel-execute:vterm-ob (body params)
     (let ((session (org-babel-vterm-initiate-session
-		    (cdr (assq :session params))))
-	  (full-body body))
+					(cdr (assq :session params))))
+		  (full-body body))
       (org-babel-vterm-evaluate session full-body params)))
 
   (defvar ob-vterm-setup-alist
@@ -733,41 +757,41 @@ It will operate between the region from START to END."
       (vterm-send-string cmd)
       (vterm-send-string "\n")
       (if (string= results-param "none")
-	  ""
-	(while (not (= (point)
-		       (save-excursion
-			 (vterm-next-prompt 1)
-			 (point)))
-		    ;; (save-excursion
-		    ;;   (goto-char start)
-		    ;;   (not (re-search-forward
-		    ;; 	  "ob-vterm-end"
-		    ;; 	  nil t)))
-		    )
-	  (accept-process-output vterm--process vterm-timer-delay))
-	(let* ((end (save-excursion
-		      (vterm-next-prompt 1)
-		      (search-backward "\n" nil t))))
-	  (buffer-substring
-	   (save-excursion
-	     (goto-char start)
-	     (search-forward "\n" nil t))
-	   end)))))
-  
+		  ""
+		(while (not (= (point)
+					   (save-excursion
+						 (vterm-next-prompt 1)
+						 (point)))
+					;; (save-excursion
+					;;   (goto-char start)
+					;;   (not (re-search-forward
+					;; 	  "ob-vterm-end"
+					;; 	  nil t)))
+					)
+		  (accept-process-output vterm--process vterm-timer-delay))
+		(let* ((end (save-excursion
+					  (vterm-next-prompt 1)
+					  (search-backward "\n" nil t))))
+		  (buffer-substring
+		   (save-excursion
+			 (goto-char start)
+			 (search-forward "\n" nil t))
+		   end)))))
+
   (defun org-babel-vterm-evaluate (session body &optional params stdin cmdline)
     (let* ((capture-all (cdr (assq :capture params)))
-	   (capture-all (member capture-all '("t" "yes")))
-	   (results-param (cdr (assq :results params))))
+		   (capture-all (member capture-all '("t" "yes")))
+		   (results-param (cdr (assq :results params))))
       (save-match-data
-	(with-current-buffer session
-	  ;; this will goto and clear prompt
-	  ;; (vterm-send-C-l)
-	  (let ((results
-		 (mapcar (lambda (cmd) (ob-vterm-evaluate-string cmd results-param))
-			 (split-string body "\n"))))
-	    (if capture-all
-		(mapconcat 'identity results "\n")
-	      (car (last results 1))))))))
+		(with-current-buffer session
+		  ;; this will goto and clear prompt
+		  ;; (vterm-send-C-l)
+		  (let ((results
+				 (mapcar (lambda (cmd) (ob-vterm-evaluate-string cmd results-param))
+						 (split-string body "\n"))))
+			(if capture-all
+				(mapconcat 'identity results "\n")
+			  (car (last results 1))))))))
   (defalias 'vterm-ob-mode 'sh-mode)
   (provide 'ob-vterm-ob))
 
@@ -795,7 +819,7 @@ It will operate between the region from START to END."
 	      ;; checking.
 	      (set-marker comint-last-output-start (point))
 	      (get-buffer (current-buffer)))))))
-  
+
   (defun org-babel-execute:gdb (body params)
     (let ((session (org-babel-gdb-initiate-session
 		    (cdr (assq :session params))))
@@ -803,7 +827,7 @@ It will operate between the region from START to END."
 	   (org-babel-expand-body:generic
 	    body params (org-babel-variable-assignments:shell params))))
       (org-babel-gdb-evaluate session full-body params)))
-  
+
   (defun org-babel-gdb-evaluate (session body &optional params stdin cmdline)
     "Pass BODY to the Shell process in BUFFER.
 If RESULT-TYPE equals `output' then return a list of the outputs
@@ -855,7 +879,7 @@ return the value of the last statement in BODY."
 
 (require-package 'org-present)
 (with-eval-after-load 'org-present
-  (define-keys org-present-mode-keymap 
+  (util:define-keys org-present-mode-keymap
     [right] #'org-present-next
     [left]  #'org-present-prev
     "q" #'org-present-quit)

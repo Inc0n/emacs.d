@@ -1,4 +1,4 @@
-;; -*- coding: utf-8; lexical-binding: t; -*-
+;;; init-utils --- -*- coding: utf-8; lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -93,22 +93,6 @@ If region is active get region string and deactivate."
     (when (region-active-p)
       (deactivate-mark))))
 
-;; files, very very long line counter-measurement
-(use-package so-long :ensure nil
-  :defer 1
-  :config
-  (setq so-long-predicate 'buffer-too-big-p) ; was so-long-statistics-excessive-p
-  (defun buffer-too-big-p ()
-	"If buffer is more than 3000 lines, each line >= 60 bytes."
-	(cl-destructuring-bind (line longest-line-len mean-line-len)
-		(buffer-line-statistics)
-	  (if (apply 'derived-mode-p so-long-target-modes)
-		  (> longest-line-len so-long-threshold)
-		(if (derived-mode-p 'text-mode)
-			(and (> line 3000)
-				 (> mean-line-len 60))
-		  (error "Buffer mode (%s) is not supported" major-mode)))))
-  :init (global-so-long-mode +1))
 
 (defun delete-this-buffer-and-file ()
   "Delete the current file, and kill the buffer."
@@ -169,7 +153,7 @@ version control automatically."
   (interactive (list (intern (read-string "Symbol: "))))
   (set symbl (eval (car (get symbl 'standard-value)))))
 
-(defmacro define-hook-setup (hook-name &rest body)
+(defmacro util:define-hook-setup (hook-name &rest body)
   "Macro helper for `add-hook' to HOOK-NAME.
 It will defun setup hook function with BODY.  The setup hook
 function will have the name `HOOK-NAME'-setup"
@@ -198,10 +182,11 @@ function will have the name `HOOK-NAME'-setup"
                        (cdr body)
                      body)))))
 
-(defmacro define-keys (keymap &rest key-binds)
+(defmacro util:define-keys (keymap &rest key-binds)
   "Macro helper for `define-key' with KEYMAP and KEY-BINDS."
-  ;; (declare (debug (&define name
-  ;;                          [&rest def-body])))
+  (declare (debug (&define keymap
+                           [&rest key-binds-pair]))
+		   (indent defun))
   `(progn
      ,@(cl-loop for (key bind) on key-binds by #'cddr
                 collect `(define-key ,keymap ,key ,bind))
@@ -220,7 +205,7 @@ function will have the name `HOOK-NAME'-setup"
 ;;                   (list cmd)
 ;;                   (symbol `(call-interactively ',cmd))))))
 
-(defun my/unbound-symbol (arg)
+(defun util:unbound-symbol (arg)
   "Unbound for ARG be it function or symbol."
   (interactive
    (list
@@ -239,7 +224,7 @@ function will have the name `HOOK-NAME'-setup"
   ;; (message "unexpected %s" arg)
   (cond ((stringp arg)
          ;; This is needed because all `thing-at-point' returns string
-         (my/unbound-symbol (intern arg)))
+         (util:unbound-symbol (intern arg)))
         ((symbolp arg)
 	     (if (or (macrop arg) (functionp arg))
 	         (progn (fmakunbound arg)

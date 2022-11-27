@@ -3,22 +3,25 @@
 ;;; Code:
 
 (with-eval-after-load 'browse-url
-  (setq browse-url-browser-function #'browse-url-generic)
+  (setq browse-url-browser-function
+		(lambda (url arg)
+		  (if arg						; use generic if prefix-arg
+			  (browse-url-generic url)
+			  (eww url)))
+		browse-url-handlers '(("\\`file:" . browse-url-generic)))
 
   (if (eq system-type 'darwin)
-      (setq browse-url-handlers '(("\\`file:" . browse-url-generic))
-            browse-url-generic-program "open"
+      (setq browse-url-generic-program "open"
             browse-url-generic-args '())
-    (setq browse-url-handlers '(("\\`file:" . browse-url-firefox))
+    (setq ;; browse-url-handlers '(("\\`file:" . browse-url-firefox))
           browse-url-generic-program "firefox"
           browse-url-generic-args '("--private-window")))
   (setq browse-url-firefox-arguments '("--private-window")))
 
 (defun my/browse-file (filename)
-  "Open FILENAME and open it in browser.
-Prefix ARG will prompt for a file name in current directory."
+  "Using `browse-url-generic' to open FILENAME."
   (interactive (list (read-file-name
-  		      "Find file literally: " nil default-directory)))
+  					  "Find file: " nil default-directory)))
   (browse-url-generic
    ;; using file-truename, to make osx happy
    (file-truename filename))
@@ -27,7 +30,13 @@ Prefix ARG will prompt for a file name in current directory."
 
 ;;; eww
 
-(define-hook-setup 'eww-after-render-hook
+;; (defvar eww-redirects-alist
+;;   '(("www.reddit.com" . "old.reddit.com"))
+;;   "Alist of sites that should be redirected.")
+
+;; (defun eww-redirect (url))
+
+(util:define-hook-setup 'eww-after-render-hook
   "My eww hook setup."
   (let* ((title (plist-get eww-data :title))
          (title (if (string-empty-p title)
@@ -38,9 +47,12 @@ Prefix ARG will prompt for a file name in current directory."
     (rename-buffer (format "*eww: %s*" title)
                    t)))
 
-(define-hook-setup 'eww-mode-hook
+(util:define-hook-setup 'eww-mode-hook
+  ;; (setq-local shr-inhibit-images t)   ; toggle with `I`
+  ;; (setq-local shr-use-fonts nil)      ; toggle with `F`
+
   (setq-local truncate-lines t)
-  ;; (setq-local shr-width 90)
+  (setq-local shr-max-width nil)
   (setq-local ;; fill-column 90
               visual-fill-column-center-text nil)
   (text-scale-set 1.5)
@@ -79,35 +91,17 @@ Non-nil ARG will allow search engine selection."
   (setq-local visual-fill-column-center-text t))
 
 (with-eval-after-load 'shr
-  (setq shr-max-image-proportion 0.3))
+  (setq shr-max-image-proportion 1.0))
 
 (with-eval-after-load 'eww
+  (setq-default eww-download-directory (lambda () default-directory))
+
   (advice-add 'eww-download-callback :around 'my/eww-download-using-title)
   (defun my/eww-download-using-title (orig-func status url dir)
 	"Use a better filename, and selection of directory."
-	(unless (plist-get status :error)
-	
-	  (let* ((dir eww-download-directory)
-			 (name (or (with-current-buffer
-						   (--find (with-current-buffer it
-									 (and (derived-mode-p 'eww-mode)
-										  (string= url
-												   (plist-get eww-data :url))))
-								   (buffer-list))
-						 (concat (plist-get eww-data :title)
-								 ".html"))
-					   (user-error "Cannot current active eww buff")))
-			 (file (eww-make-unique-file-name name
-											  ;; (eww-decode-url-file-name)
-											  dir)))
+	(funcall orig-func status url dir))
 
-		(goto-char (point-min))
-		(re-search-forward "\r?\n\r?\n")
-		(let ((coding-system-for-write 'no-conversion))
-		  (write-region (point) (point-max) file))
-		(message "Saved %s" file))))
-
-  (define-keys eww-mode-map
+  (util:define-keys eww-mode-map
     ;; "C-c b" 'w3m-external-view-this-url
     ;; "f" 'my/eww-search
     "j" 'next-line
@@ -121,8 +115,7 @@ Non-nil ARG will allow search engine selection."
     "U" 'eww)
 
   (defvar eww-home-page "https://lite.duckduckgo.com/")
-  (defvar eww-search-default-engine "duckduckgo")
-  (setq eww-download-directory "~/sources/browse-session/"))
+  (defvar eww-search-default-engine "duckduckgo"))
 
 (provide 'init-browse)
 ;;; init-browse.el ends here

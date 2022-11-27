@@ -52,5 +52,10 @@ vterm_prompt_end() {
     vterm_printf "51;A$(whoami)@$(hostname):$(pwd)";
 }
 
+source ~/.zshrc
+
 setopt PROMPT_SUBST
 PROMPT=$PROMPT'%{$(vterm_prompt_end)%}'
+
+# make sure vterm TERM is linux
+export TERM=linux

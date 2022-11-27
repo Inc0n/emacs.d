@@ -96,7 +96,7 @@
      t)))
 (add-hook 'w3m-display-hook 'w3m-display-hook-setup)
 
-(define-hook-setup 'w3m-mode-hook
+(util:define-hook-setup 'w3m-mode-hook
   (w3m-lnum-mode 1)
   (local-set-key (kbd "RET") 'w3m-view-this-url)
   (setq-local truncate-lines nil
@@ -109,7 +109,7 @@
 ;; (setq w3m-search-engine-alist nil)
 
 (with-eval-after-load 'w3m
-  (define-keys 'w3m-mode-map
+  (util:define-keys 'w3m-mode-map
     (kbd "C-c b") 'w3m-external-view-this-url
     "J" 'w3m-scroll-up-or-next-url
     "K" 'w3m-scroll-down-or-previous-url)

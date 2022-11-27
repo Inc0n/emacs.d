@@ -11,6 +11,7 @@
 ;; https://stackoverflow.com/a/14539202
 
 (use-package history
+  :disabled
   :load-path "~/.emacs.d/site-lisp/"
   :ensure nil
   :init (add-hook 'after-init-hook 'history-mode))
@@ -19,42 +20,19 @@
   "Remind to use KEYBIND to invoke this FUNC-NAME."
   (when (and (null (key-binding keybind))
 			 (not no-error))
-	(warn "my/remind keybind %s -> %s does not exist in global map" keybind func-name))
+	(warn "my/remind keybind %s -> %s does not exist in global map"
+		  keybind func-name))
   (lambda ()
     (interactive)
     ;; TODO: maybe call func-name as well
-    (message "use %s to invoke %s"
+    (message "use %s instead to invoke %s"
 			 (propertize (key-description keybind) 'face 'help-key-binding)
 			 func-name)))
-
-(defun visual-replace-regexp-text-at-point (text &optional regexp)
-  (interactive (list (util/thing-at-point/deselect)))
-  (require 'visual-regexp)
-  ;; (unless isearch-mode
-  ;;   ;; @see
-  ;;   ;; https://github.com/szermatt/visual-replace/issues/2#issuecomment-1160217255
-  ;;   (message "Cannot use this whilst `isearch-mode' is active"))
-  ;; (pcase-let* ((vr-args
-  ;; 				(visual-replace-make-args
-  ;; 				 :from (or text "")
-  ;; 				 :query t
-  ;; 				 :regexp regexp))
-  ;; 			   (`(,args ,ranges) (visual-replace-read vr-args)))
-  ;;   (visual-replace args ranges))
-  (cl-letf (((symbol-function 'vr--set-regexp-string)
-			 (lambda ()
-			   (setq vr--regexp-string
-					 (if regexp
-						 text
-					   (regexp-quote text)))
-			   ;; (save-excursion
-			   ;; 	 (vr--do-replace-feedback))
-			   )))
-	(call-interactively 'vr/query-replace)))
 
 (with-eval-after-load 'mac-win
   (when mac-mouse-wheel-mode
 	(mac-mouse-wheel--remove-bindings))
+  ;; dont't want accidental scrolls with controll+wheel up
   (setq mouse-wheel-scroll-amount
 		(remove '((control) . text-scale)
 				mouse-wheel-scroll-amount))
@@ -63,31 +41,46 @@
 
 (use-package emacs-surround :ensure nil
   :load-path "~/.emacs.d/site-lisp/"
-  :commands (emacs-surround
-			 emacs-surround-insert)
-  :defer t
+  :commands (emacs-surround emacs-surround-insert)
+  :config (add-to-list 'emacs-surround-alist '("<" . ("<" . ">")))
   :init
-  (defun emacs-surround-wrap-sexp-round ()
-	(interactive)
-	(emacs-surround-insert
-	 "("
-	 (lambda ()
-	   (or (bounds-of-thing-at-point 'sexp)
-		   ;; handle if text under cursor is empty, e.g. just space
-		   (cons (point)
-				 (or (save-excursion
-					   (forward-thing 'sexp 1)
-					   (point))
-					 (point))))))
+  (defun emacs-surround-sexp-at-point ()
+	(or (bounds-of-thing-at-point 'sexp)
+		;; handle if text under cursor is empty, e.g. just space
+		(cons (point)
+			  ;; forward-thing would error if forward-sexp failed
+			  ;; (or (save-excursion
+			  ;; 	   (forward-thing 'sexp 1)
+			  ;; 	   (point)))
+			  (point))))
+  (defun emacs-surround-wrap-sexp-with (thing)
+	(interactive
+	 (list
+	  (let* ((type (event-basic-type last-command-event))
+			 (char (if (characterp type)
+					   ;; Number on the main row.
+					   type
+					 ;; Keypad number, if bound directly.
+					 (car (last (string-to-list (symbol-name type)))))))
+		;; convert to string
+		(string char))))
+	(emacs-surround-insert thing #'emacs-surround-sexp-at-point)
 	(forward-char)
 	;; (my/indent-defun)
 	(ignore-errors (indent-pp-sexp)))
 
-  (define-keys global-map
+  (setq delete-pair-blink-delay 0.1)
+
+  (keyboard-translate ?9 ?\()
+  (keyboard-translate ?\( ?9)
+
+  (util:define-keys global-map
 	[?\M-s ?c] #'emacs-surround-change-at-point
 	[?\M-s ?s] #'emacs-surround-insert
-	[?\M-s ?d] #'emacs-surround-delete-at-point
-	[?\M-\(] #'emacs-surround-wrap-sexp-round
+	[?\M-s ?d] #'delete-pair
+	[?\M-\(] #'emacs-surround-wrap-sexp-with
+	[?\M-\[] #'emacs-surround-wrap-sexp-with
+	[?\M-\{] #'emacs-surround-wrap-sexp-with
 	[?\M-\"] (lambda () (interactive) (emacs-surround-insert "\""))))
 
 (defun move-line-up (start end n)
@@ -102,71 +95,74 @@
   (forward-line -1))
 
 ;; {{ Leader key
-(defvar leader-keymap (make-sparse-keymap))
+(defvar leader-keymap ;; (make-sparse-keymap)
+  mode-specific-map)  ; It's C-c map
 
-(global-set-key [C-m] leader-keymap)
+;; (global-set-key [C-m] leader-keymap)
 
-(define-keys leader-keymap
+(util:define-keys leader-keymap
   "ar" #'align-regexp
   "aw" #'avy-goto-word-or-subword-1
   "am" #'apply-macro-to-region-lines
+
+  "f" #'next-buffer
+  "b" #'mode-line-other-buffer
 
   "cc" #'clipboard-kill-ring-save
   "cam" #'org-tags-view	       ; `C-c a m': search items in org-file-apps by tag
   "ci" #'org-clock-in	       ; `C-c C-x C-i'
   "co" #'org-clock-out	       ; `C-c C-x C-o'
   "cr" #'org-clock-report	   ; `C-c C-x C-r'
-  "cf" (lambda () (interactive)	   ; copy buffer name
+  "cb" (lambda () (interactive)	   ; copy buffer name
 		 (kill-new buffer-file-name) (message buffer-file-name))
 
   "di" #'dictionary-lookup
   "dd" #'sdcv-search-input				; details
   "dt" #'sdcv-search-input+				; summary
-  "dm" #'lookup-doc-in-man
-  ;;
-  "da" #'diff-region-tag-selected-as-a
-  "db" #'diff-region-compare-with-b
-  "cp" #'copy-this-buffer-and-file
+  "dm" #'man
+
+  "ct" #'copy-this-buffer-and-file
   "dt" #'delete-this-buffer-and-file
   "rt" #'rename-this-buffer-and-file
 
   "eb" #'eval-buffer
 
-  "fm" #'dired-jump			 ; open the dired from default-directory
-  "fb" #'flyspell-buffer
-  "fc" #'flyspell-correct-word-before-point
-
-  "gf" #'consult-find
-  "gs" #'consult-recent-file
-  "gr" #'copy-and-paste
+  "hf" #'consult-find
+  "hs" #'consult-recent-file
+  "hr" #'copy-and-paste
 
   "ih" #'my/goto-git-gutter
   "ii" #'consult-imenu
   "ic" #'completing-imenu-comments
-  "ip" #'my/insert-path
   "im" #'consult-mark
 
+  ;; NOTE: `avy-goto-word' can be replaced with an isearch
+  ;; implementation and `avy-goto-line' can be achieved with switching
+  ;; to relative line spacing, and read char twice
   "j" #'avy-goto-line-below
   "k" #'avy-goto-line-above
 
-  "lo" (lambda () (interactive) (occur-symbol-at-mouse nil))
-  "lq" #'visual-replace-regexp-text-at-point
-
   "m" (lambda ()
-		 (interactive)
-		 (push-mark-command t)
-		 (deactivate-mark))
-  "nw" #'narrow-or-widen-dim
+		(interactive)
+		(push-mark-command t)
+		(deactivate-mark))
+  "n" #'narrow-or-widen-dim
 
   "op" #'compile
-  "oa" (lambda (arg) (interactive "P") (org-agenda arg "n"))
+  "on" (lambda (arg) (interactive "P") (org-agenda arg "n"))
   "od" (lambda (arg) (interactive "P") (org-agenda arg "d"))
-  "og" #'org-agenda
+  "ot" (lambda (arg) (interactive "P") (org-agenda arg "t"))
+  "om" #'emms
+  "oa" #'org-agenda
+  "oc" #'org-capture
+  "os" (lambda () (interactive) (occur-symbol-at-mouse nil))
 
   "pw" #'pwd
   "pp" #'clipboard-yank
 
   "q" #'quit-window
+
+  "." #'my/insert-date
 
   "sr" #'scratch
   "ss" #'completing-ripgrep
@@ -181,35 +177,40 @@
   "xw" #'kill-buffer-and-window
   ;;
   "uu" #'winner-undo
-  "wr" #'rotate-two-split-window)
-
-(define-keys leader-keymap
-  [?\C-s] #'completing-swiper
-  [?\C-o] #'my/browse-file
-  [?\C-b] #'mode-line-other-buffer
-  [?\C-t] #'log-done)
+  "wr" #'rotate-two-split-window
+  "ws" (lambda (k) (interactive
+			   (list (read-key "Press key for direction: ")))
+		 (let ((k (cl-case k
+					((left right up down) k)
+					((?h) 'left)
+					((?j) 'down)
+					((?k) 'up)
+					((?l) 'right)
+					(t k))))
+		   (autoload 'windmove-swap-states-in-direction "windmove")
+		   (if (memq k '(left right up down))
+			   (windmove-swap-states-in-direction k)
+			 (user-error "Use arrow key instead! Got %s" k)))))
 ;; }}
 
 (with-eval-after-load 'elisp-mode
   (define-key emacs-lisp-mode-map
-	(kbd "C-c C-u") #'my/unbound-symbol))
+	"" #'util:unbound-symbol))
 
-(define-keys global-map
+(util:define-keys global-map
   [?\M-n] #'move-line-down
   [?\M-p] #'move-line-up
 
-  (kbd "C-x C-i") #'eval-print-last-sexp
+  ;; [?\C-x ?\C-i] #'eval-print-last-sexp
   [?\C-x ?\C-b] #'ibuffer
 
-  [?\C-s] #'my/isearch-at-point-maybe
-  ;; org mode
-  [?\C-c ?o ?c] #'org-capture)
+  [?\C-s] #'my/isearch-at-point-maybe)
 
 (global-unset-key [?\C-z])				; suspend-frame
 
 (with-eval-after-load 'mac-win
   ;; emacs-mac port introduce some unnecessary binds., disable them!
-  (define-keys global-map
+  (util:define-keys global-map
 	[C-wheel-up] 'ignore				; annoying scrolls
 	[C-wheel-down] 'ignore
     [mouse-2] 'ignore					; what does this do? Prob bad
@@ -217,31 +218,33 @@
     [swipe-left] 'ignore))
 
 ;; Emacs editing binds
-(define-keys global-map
+(util:define-keys global-map
   [?\C-_] #'pop-global-mark
   [?\C-\M-_] #'unpop-global-mark-command
 
-  [?\C-x ?b] #'consult-project-buffer
+  [?\C-\M-\-] #'goto-last-change ;; highlight-changes-next-change
+  [?\C-\M-=] #'goto-last-change-reverse
+
+  [?\C-\M-s] #'isearch-forward-regexp
+  [?\C-\M-\'] #'vundo
+
+  ;; [?\C-x ?b] #'consult-project-buffer	; switch-to-buffer
 
   [?\C-h ?d] #'describe-function		; apropos-documentation
   [?\C-h ?f] #'find-function			; describe-function
   [?\C-h ?K] #'find-function-on-key		; Info-goto-emacs-key-command-node
   [?\C-h ?M] #'describe-keymap
 
-  [?\C-\M-s] #'isearch-forward-regexp
   [?\C-\S-s] #'isearch-backward
   [?\C-\S-u] #'join-line
   ;; join line from below
   [?\C-\S-o] [?\C-e ?\C-n ?\C-\S-u]
-  [?\C-\M-\'] #'vundo
 
-  [?\s-\;] #'avy-goto-char-timer
   [s-backspace] (lambda (arg)
 				  "Kill ARG lines backward."
 				  (interactive "p")
 				  (kill-line (- 1 arg)))
   [C-backspace] #'backward-delete-word
-
   [C-M-backspace] #'backward-kill-sexp
 
   ;; @see https://emacs-china.org/t/emacs-builtin-mode/11937/63
@@ -255,7 +258,6 @@
 			   (split-window-horizontally)
 			   (other-window 1)
 			   (consult-buffer))
-  [?\C-c ?.] #'my/insert-date
 
   ;; tab bar
   ;; don't set [C-tab], as it will be set by tab-bar if not set
@@ -267,25 +269,6 @@
 			  (call-interactively 'delete-frame)))
   [C-tab] #'tab-next
   [C-S-tab] #'tab-previous)
-
-(with-eval-after-load 'org
-  (define-keys org-mode-map
-    [?\C-\M-u] 'org-up-element
-    [?\C-\M-e] 'org-next-block
-    [?\C-\M-n] 'org-next-visible-heading
-    [?\C-\M-p] 'org-previous-visible-heading
-    [?\C-\M-d] 'org-forward-heading-same-level
-
-    [?\M-N] 'org-move-subtree-down
-    [?\M-P] 'org-move-subtree-up
-
-    [?\C->] 'org-shiftmetaright		; org-do-demote
-    [?\C-<] 'org-shiftmetaleft		; org-do-promote
-    [?\M-+] 'org-latex-pdf-count-words
-
-    [?\C-c ?o ?a] 'org-archive-subtree
-    [?\C-c ?o ?u] 'org-update-statistics-cookies
-    [C-m ?o ?e] 'org-babel-execute-subtree))
 
 (provide 'init-bindings)
 ;;; init-bindings.el ends here

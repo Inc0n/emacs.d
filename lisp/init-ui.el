@@ -5,8 +5,6 @@
 
 ;;; tab-bar
 
-(setq tab-bar-tab-hints t)
-
 (with-eval-after-load 'tab-bar
   (setq tab-bar-new-tab-choice
 		(lambda () (find-file (project-prompt-project-dir)))
@@ -39,7 +37,7 @@
 
 (setq switch-to-buffer-obey-display-actions t)
 
-;; follow-mode
+;; follow-mode, double window same buffer? like reading book
 ;; (windmove-install-defaults
 ;;  nil modifiers
 ;;  '((windmove-left left)
@@ -47,9 +45,7 @@
 ;;    (windmove-up up)
 ;;    (windmove-down down)))
 
-;; move focus between sub-windows
-
-
+;; Winum: move focus between sub-windows
 (setq winum-keymap-quick-access-modifier "C")
 
 (with-eval-after-load 'winum
@@ -57,11 +53,10 @@
   (setq winum-mode-line-position 0
         winum-auto-setup-mode-line nil)
   (set-face-attribute 'winum-face nil
-		      :inherit '(mode-line-emphasis bold)
-		      ;; :foreground "DeepPink"
-		      ;; :underline "DeepPink"
-		      ;; :weight 'bold
-		      ))
+					  :inherit '(mode-line-emphasis bold)
+					  ;; :underline "DeepPink"
+					  ;; :weight 'bold
+					  ))
 
 ;; @see https://github.com/wasamasa/shackle
 (use-package shackle :ensure t
@@ -69,34 +64,38 @@
   :init (add-hook 'emacs-startup-hook 'shackle-mode)
   :config
   (setq shackle-select-reused-windows nil ; default nil
+		shackle-inhibit-window-quit-on-same-windows t
         shackle-default-alignment 'right  ; default below
         shackle-default-size 0.5
-		shackle-default-rule '(:select t))
-  ;; :same if non-nil open in current window
+		shackle-default-rule '(:select nil))
+  ;; :same (reuse window)
+  ;; :popup (new window)
+  ;; :other (use other window)
   ;; :select if non-nil select upon open
-  ;; :inhibit-window-quit if non-nil prevent window quiting on q
-
-  ;; CONDITION(:regexp) :select :inhibit-window-quit :size+:align|:other :same|:popup
+  ;; :inhibit-window-quit if non-nil do not close window
+  ;; CONDITION(:regexp)
   (setq shackle-rules
-        `((compilation-mode :select nil :align below :size 0.3)
-          ("*Shell Command Output*" :select nil)
+        `(("*Shell Command Output*" :select nil)
           ("\\*Async Shell.*\\*" :regexp t :ignore t)
-          (occur-mode :align t :select t :inhibit-window-quit nil)
-          (racket-repl-mode select nil)
+          ;; (racket-repl-mode :select nil)
           ;; (,(rx "*" (or "eww history" "Help") "*")
           ;;  :regexp t :select nil :inhibit-window-quit t)
-          ("*Completions*" :size 0.3 :align t)
-          (eshell-mode :other t :same nil)
-		  (messages-buffer-mode :other t :inhibit-window-quit t)
-          ((Man-mode Woman-mode)
-		   :regexp t :inhibit-window-quit nil :other t)
-          ("\\*poporg.*\\*" :regexp t :other t)
-          ("*Calendar*" :size 0.3 :align below)
-          (Info-mode :inhibit-window-quit t :same nil)
-          ((magit-status-mode magit-log-mode) :inhibit-window-quit t :same t)
-          ("*Flycheck errors*"
-		   ;; flycheck-error-list-mode
-		   :select nil :size 0.3 :align below)
+		  ((elfeed-show-mode) :select t)
+		  ;; Show on other buffer, quit do not close window
+		  ((messages-buffer-mode eshell-mode Man-mode Woman-mode)
+		   :other t :inhibit-window-quit t)
+		  ;; Show on current buffer, quit do not close window
+		  ((Info-mode) :same nil :inhibit-window-quit t)
+		  ;;
+		  ((magit-status-mode magit-log-mode)
+		   :inhibit-window-quit t :same t)
+		  ;; popup window
+		  ((compilation-mode completion-list-mode
+							 calendar-mode
+							 occur-mode
+							 flycheck-error-list-mode)
+		   :size 0.3 :align below ;; :inhibit-window-quit nil
+		   :select t)
           ;; (" \\*which-key\\*" :size 0.3 :align below)
           ("TAGS" :select t :other t))))
 
@@ -109,11 +108,11 @@
     erc-mode
     fundamental-mode
     inferior-js-mode
-    vundo-mode
     woman-mode
+	man-mode
     Info-mode
-    calc-mode
-    calc-trail-mode
+    calendar-mode vundo-mode which-key-mode
+    calc-mode calc-trail-mode
     comint-mode
     gnus-group-mode
     gud-mode
@@ -121,13 +120,11 @@
     log-edit-mode
     term-mode eshell-mode shell-mode vterm-mode
     eww-mode
-    nov-mode
+    org-mode nov-mode doc-view-mode
 	help-mode
-    which-key-mode
-    doc-view-mode
+	elfeed-show-mode
     gnus-summary-mode
-    gnus-article-mode
-    calendar-mode)
+    gnus-article-mode)
   "Major modes without line number.")
 
 (add-hook 'after-init-hook #'global-display-line-numbers-mode)
@@ -139,8 +136,9 @@
   "Setup 'display-line-numbers-mode'.
 Will disable line numbers if is temp buffer, or if `major-mode'
 in `my/linum-inhibit-modes'."
-  (when (memq major-mode my/linum-inhibit-modes)
-    (setq-local display-line-numbers nil)))
+  (when (not (derived-mode-p 'prog-mode))
+	;; (memq major-mode my/linum-inhibit-modes)
+	(setq-local display-line-numbers nil)))
 
 (add-hook 'display-line-numbers-mode-hook #'display-line-numbers-mode-hook-setup)
 
@@ -161,28 +159,60 @@ in `my/linum-inhibit-modes'."
 
 (defvar display-minor-mode-line-p nil)
 
+(defun simple-modeline--buffer-status ()
+  "Find buffer modified status."
+  (cond ((and buffer-read-only (buffer-file-name))
+		 '(read-only "禁" . error))
+		((and buffer-file-name (buffer-modified-p))
+         '(modified "写" warning bold))
+		(t
+		 '(normal "梁" . font-lock-type-face))))
+
+(defun simple-modeline-segment-modified ()
+  "Displays a color-coded buffer modification/read-only indicator in the mode-line."
+  ;; (if (not (string-match-p "\\*.*\\*" (buffer-name))))
+  (pcase-let* ((`(,status ,status-name . ,face)
+				(simple-modeline--buffer-status)))
+    (propertize
+	 status-name
+     'face `(;; :height 1.1
+             :inherit ,face)
+     'display '(raise 0.1)
+     'help-echo (format
+                 "Buffer is `%s'\nmouse-1: Toggle read-only status."
+                 status)
+     'local-map '(keymap
+                  (mode-line
+                   keymap
+                   (mouse-1 . mode-line-toggle-read-only)))
+     'mouse-face 'mode-line-highlight)))
 
 (setq-default
  mode-line-format
  `("%e "								; error on full memory
    (:eval (winum-get-number-string)) " "
-   ,(and (not (display-graphic-p))
-		 "-")				; mode-line-front-space
-   mode-line-mule-info					; IM, Coding, EOL description
+   ,(when (not (display-graphic-p))
+	  "-")								; mode-line-front-space
+   mode-line-mule-info " "				; IM, Coding, EOL description
    mode-line-client						; info on emacs client frame
-   mode-line-modified					; buffer modification info
-   ;; " "
-   ;; (:eval (simple-modeline-segment-modified))
-   ;; (:eval (simple-modeline-segment-evil-modal))
-   " "
-   mode-line-buffer-identification		; buffer name
-   " %6p (%c:%l) "						; mode-line-position
-
    mode-line-remote						; remote buffer info
-   ;; mode-line-frame-identification
-   " " (vc-mode vc-mode) "  "
+   mode-line-modified					; buffer modification info
+   " "
+   ;; ,(propertize
+   ;; 	 "本"
+   ;; 	 'face
+   ;; 	 ;; (list :inherit :height 1.2)
+   ;; 	 ;; 'display '(raise -0.1)
+   ;; 	 ;; 'error
+   ;; 	 '(mode-line-emphasis bold))
+   ;; (:eval (simple-modeline-segment-modified)) " "
+   mode-line-buffer-identification		; buffer name
+   "  %4p (%c:%l) "						; customized `mode-line-position'
+   ;; mode-line-frame-identification		; frame info
+   "  "									; wide spacing
+   (vc-mode vc-mode) " "
 
-   ;; mode-line-modes without minor modes
+   ;; `mode-line-modes' without minor modes
    ((compilation-in-progress
 	 #("[Compiling] " 0 12
 	   (
@@ -196,6 +226,7 @@ in `my/linum-inhibit-modes'."
 	"("
 	(:propertize
 	 mode-name
+	 face bold
 	 help-echo "Major mode\nmouse-1: Show help for major mode"
 	 mouse-face mode-line-highlight
 	 local-map (keymap
@@ -214,23 +245,20 @@ in `my/linum-inhibit-modes'."
 	;; 				 ;; (down-mouse-3 . #4#)
 	;; 				 (mouse-2 . mode-line-minor-mode-help)
 	;; 				 (down-mouse-1 . mouse-minor-mode-menu))))
-	#("%n" 0 2
+	#("%n" 0 2							; narrow
 	  (
 	   help-echo "mouse-2: Remove narrowing from buffer"
 	   mouse-face mode-line-highlight
 	   local-map (keymap
 				  (mode-line keymap (mouse-2 . mode-line-widen)))))
 	")"
-	#("%]" 0 2
-	  (help-echo "Recursive edit, type M-C-c to get out"))
-	" ")
-   ;; (:propertize "%m" 'face 'bold)
-   ;; global-mode-string,org-timer-set-timer in org-mode need this
-   "%M"
+	#("%]" 0 2							; recursive edit
+	  (help-echo "Recursive edit, type M-C-c to get out")))
    ;; "%-" ;; fill with '-'
-   mode-line-misc-info
-   ,(and (not (display-graphic-p))
-		 'mode-line-end-spaces)))
+   ;; org-timer-set-timer in org-mode need this, %m
+   mode-line-misc-info					; equal to %M, it seems
+   ,(when (not (display-graphic-p))
+	  'mode-line-end-spaces)))
 
 ;; simple-modeline
 ;; define some custom modeline segments
@@ -326,11 +354,19 @@ in `my/linum-inhibit-modes'."
 ;;; Themes
 
 (require-package 'doom-themes)
-(require-package 'solarized-theme)
 (require-package 'modus-themes)
 (require-package 'ef-themes)
 
-(setq ef-themes-mixed-fonts t)			; define before pkg load
+(setq ef-themes-mixed-fonts t)			; set before pkg load
+(with-eval-after-load 'ef-themes
+  (setq ef-themes-headings
+		;; This variable pitch does not scale, which works badly in NOV
+		'((0 bold)
+		  (1 bold variable-pitch 1.15)
+		  (2 regular variable-pitch 1.1)
+		  (3 regular variable-pitch)
+		  (t regular variable-pitch)
+		  )))
 
 ;; doom-one, doom-solarized-dark-high-contrast, doom-dracula
 ;; doom-gruvbox-light, doom-homage-white, solarized-light-high-contrast
@@ -348,10 +384,16 @@ in `my/linum-inhibit-modes'."
   (when (and (not (bound-and-true-p org-modern-global-mode))
              (facep 'org-done))
     (set-face-attribute 'org-done nil
-                        :underline t
-                        :bold t))
+                        ;; :underline nil
+                        ;; :bold t
+						))
   (when (bound-and-true-p simple-modeline-mode)
-    (simple-modeline--update-modeline)))
+    (simple-modeline--update-modeline))
+  ;; Make mode-line taller (thicker)
+  (dolist (face '(mode-line mode-line-inactive))
+	(set-face-attribute
+	 face nil
+	 :box `(:line-width 2 :color ,(face-background face)))))
 
 (defun load-theme-only (theme)
   "Unload all other theme before loading `THEME'."
@@ -360,14 +402,12 @@ in `my/linum-inhibit-modes'."
   (load-theme theme t)
   (my/faces-setup)
   ;; sometimes, switching to light theme, cause unwanted font switch
-  ;; however, this resizes the frame of emacs
-  ;; (completing-read-fonts "Menlo")
   )
 
 (defun my/toggle-day/night ()
   "Toggle between day and night themes."
   (interactive)
-  (if (member theme/night custom-enabled-themes)
+  (if (memq theme/night custom-enabled-themes)
       (load-theme-only theme/day)
     (load-theme-only theme/night)))
 

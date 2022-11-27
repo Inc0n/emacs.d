@@ -30,8 +30,9 @@ lisp-mode
 	"."
 	(file-name-nondirectory (file-name-sans-extension (buffer-file-name))))
    pkg)
-  n> "(:use :cl))" n
-  "(in-package :" (s pkg) ")" n)
+  n> "(:use :cl" p "))"
+  n "(in-package :" (s pkg) ")"
+  n)
 
 (defsystem
   "(asdf:defsystem "
@@ -41,10 +42,10 @@ lisp-mode
   n> ":author \"${2:name} <${3:email}>\""
   n> ":maintainer \"$2 <$3>\""
   n> ":description \"" p "\""
-  ;; :homepage \"https://github.com/\"
-  ;; :depends-on (#:)
-  n> ":components ((:file \"package\")"
-  n> "(:file \"$5\")"
+  n> ";; :homepage \"https://github.com/\""
+  n> ";; :depends-on (#:" p ")"
+  n> ":components ((:file \"" p "\")"
+  n> "(:file \"package\")"
   n> "(:module src"
   n> ":components"
   n> "((:file \"vec3\")"

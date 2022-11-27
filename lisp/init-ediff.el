@@ -66,7 +66,7 @@ Also remove buffers whose binding files already merged in `buffer-list'."
   ;;   "3" (my/ediff-command 'ediff-copy-B-to-C)
   ;;   "b" (my/ediff-command 'ediff-copy-both-to-C))
 
-  (define-hook-setup 'ediff-startup-hook
+  (util:define-hook-setup 'ediff-startup-hook
     "Hide control panel if it's current buffer."
     (when (string-match-p "\*Ediff Control Panel.*\*" (buffer-name))
       (unless my/ediff-panel-name
@@ -83,4 +83,4 @@ Also remove buffers whose binding files already merged in `buffer-list'."
       (window-configuration-to-register ?a))))
 
 (provide 'init-ediff)
-;;; init-ediff ends here
+;;; init-ediff.el ends here

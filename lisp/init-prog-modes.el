@@ -1,7 +1,12 @@
-;; -*- coding: utf-8; lexical-binding: t; -*-
+;;; init-prog-modes --- -*- coding: utf-8; lexical-binding: t; -*-
 
 ;;; Commentary:
+;;; All prog modes related setup are put into here.
+;;;
 ;;; Code:
+
+;; How to make flymake less angry
+(eval-when-compile (require 'use-package))
 
 ;; avoid default "gnu" style, use more popular one
 (with-eval-after-load 'cc-mode
@@ -13,7 +18,7 @@
   (setq-default c-basic-offset 'set-from-style
 				c-indent-level)
 
-  (define-keys c-mode-map
+  (util:define-keys c-mode-map
 	[tab] #'indent-for-tab-command
 	;; @see
 	;; http://stackoverflow.com/questions/3509919/emacs-c-opening-corresponding-header-file
@@ -42,14 +47,14 @@
   ;; google "C/C++/Java code indentation in Emacs" for more advanced skills
   ;; C code:
   ;;   if(1) // press ENTER here, indent with N spaces
-  (c-set-offset 'substatement 4)
+  (c-set-offset 'substatement 2)
   ;;   void fn() // press ENTER here, zero means no indentation
   (c-set-offset 'func-decl-cont 0))
 
 (defun my/c-mode-setup ()
   "C/C++ only setup."
 
-  (setq c-basic-offset 4)
+  (setq c-basic-offset 2)
   (setq cc-search-directories
 		'("." "/usr/include" "/usr/local/include/*" "../*/include" "$WXWIN/include"))
 
@@ -62,28 +67,33 @@
   ;; make a #define be left-aligned
   (setq c-electric-pound-behavior '(alignleft)))
 
-(use-package zig-mode :defer t :ensure t
+(use-package zig-mode :ensure t
+  :commands (zig-mode)
   :config
   (setq zig-return-to-buffer-after-format t
 		zig-indent-offset 2
 		zig-format-on-save nil))
 
-(use-package nim-mode
-  :defer t
+(use-package nim-mode :ensure t
+  :commands (nim-mode)
   :config
   (setq nim-smie-indent-dedenters nil)
-  (define-keys nim-mode-map
+  (util:define-keys nim-mode-map
 	[?\C-\M-a] 'nim-nav-backward-block
 	[?\C-\M-e] 'nim-nav-forward-block)
-  (defun nim-mode-setup ()
-	;; (flycheck-nimsuggest-setup)
-	(require 'flycheck-nim))
+  (defun nim-mode-setup () nil)
   (add-hook 'nim-mode-hook 'nim-mode-setup))
 
 (use-package tree-sitter :ensure t
+  :defer t
   :config
-  (global-tree-sitter-mode 1)
-  (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode))
+  (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode)
+  (add-to-list
+   'tree-sitter-major-mode-language-alist
+   '(haskell-mode . haskell))
+  :init
+  ;; (add-hook 'prog-mode-hook 'tree-sitter-mode)
+  (add-hook 'emacs-startup-hook 'global-tree-sitter-mode))
 
 (use-package tree-sitter-ispell
   :disabled
@@ -108,29 +118,32 @@
 	   (tsc-node-end-position node)))))
 
 (use-package tree-sitter-langs :ensure t
+  :defer t
   :after tree-sitter)
 
 (with-eval-after-load 'elec-pair
   (setq electric-pair-inhibit-predicate
-		(defun my/electric-pair-inhibit (char)
-		  ;; (electric-pair-conservative-inhibit char)
-		  (or (electric-pair-default-inhibit char)
-			  (and (memq major-mode '(minibuffer-inactive-mode))
-		   (not (string-match "^Eval:" (buffer-string))))
-			  (let ((char-after (following-char)))
-			(eq (char-syntax char) (char-syntax char-after))
-			;; input single/double quotes at the end of word
-			(and (memq char '(?\" ?\'))
-					 char-after
-					 (eq (char-syntax char-after) ?w))
-			;; I find it more often preferable not to pair when the
-			;; same char is next.
-			(eq char char-after)
-			;; Don't pair up when we insert the second of "" or of ((.
-			;; (and (eq char ?\") (eq char char-after))
-				;; I also find it often preferable not to pair next to a word.
-				(and (eq (char-charset char-after) 'ascii)
-					 (eq (char-syntax char-after) ?w)))))))
+		'electric-pair-default-inhibit
+		;; there is some bugs in this predicate
+		;; 'my/electric-pair-inhibit
+		)
+  (defun my/electric-pair-inhibit (char)
+	(or (electric-pair-default-inhibit char)
+		;; (and (memq major-mode '(minibuffer-inactive-mode))
+		;; 	 (not (string-match "^Eval:" (buffer-string))))
+		(let ((char-after (following-char)))
+		  (or
+		   ;; (eq (char-syntax char) (char-syntax char-after))
+		   ;; input single/double quotes at the end of word
+		   (and (memq char '(?\" ?\'))
+				(eq (char-syntax char-after) ?w))
+		   ;; I find it more often preferable not to pair when the
+		   ;; same char is next.
+		   (eq char char-after)
+		   ;; I also find it often preferable not to pair next to a
+		   ;; word.
+		   (and (eq (char-charset char-after) 'ascii)
+				(eq (char-syntax char-after) ?w)))))))
 
 (with-eval-after-load 'compile
   (setq compilation-scroll-output t)
@@ -160,6 +173,7 @@ This function can be re-used by other major modes after compilation."
 
 ;; structural editing package
 (use-package puni :ensure t
+  :commands (puni-mode)
   :config
   ;; (defun paredit-reindent-defun (&optional argument)
   ;; 	"Reindent the definition that the point is on.
@@ -210,7 +224,7 @@ This function can be re-used by other major modes after compilation."
   ;; (unless (looking-at-p (rx line-start (+ space) line-end))
   ;; (newline)) (call-interactively #'self-insert-command))
 
-  (define-keys puni-mode-map
+  (util:define-keys puni-mode-map
 	;; [C-m ?g ?r] (sexp-and-normal #'copy-and-paste)
 	;; free up the following key binds
 	[?\C-\M-a] nil						; puni-beginning-of-sexp
@@ -224,8 +238,9 @@ This function can be re-used by other major modes after compilation."
 	;; newline just creates annoying newline
 	[remap newline] #'reindent-then-newline-and-indent
 
-	[?\C-\M-\-] #'goto-last-change
-	[?\C-\M-=] #'goto-last-change-reverse
+	;; Moved to init-binding, text modes needs this as well.
+	;; [?\C-\M-\-] #'goto-last-change
+	;; [?\C-\M-=] #'goto-last-change-reverse
 
 	[?\C-\(] #'puni-slurp-backward
 	[?\C-\)] #'puni-slurp-forward
@@ -241,42 +256,55 @@ This function can be re-used by other major modes after compilation."
 		eldoc-echo-area-use-multiline-p t))
 
 (use-package rainbow-delimiters :ensure t :defer t
-  :init (setq rainbow-delimiters-max-face-count 1))
+  :init
+  (setq rainbow-delimiters-max-face-count 1
+		rainbow-delimiters-pick-face-function
+		;; since only 1 face needs to be fontlocked, we can optimize
+		;; things with a little here:
+		(lambda (depth match _loc)
+		  (cond ((<= depth 0) 'rainbow-delimiters-unmatched-face)
+				((not match) 'rainbow-delimiters-mismatched-face)
+				(:otherwise  'rainbow-delimiters-depth-1-face)))))
+
+(with-eval-after-load 'flymake
+  (setq elisp-flymake-byte-compile-load-path
+		(list "./"
+			  (file-name-directory (locate-library "use-package"))
+			  ;; (file-name-directory (locate-library "cl-macs"))
+			  )))
 
 (defun generic-prog-mode-hook-setup ()
-  "My generic `prog-mode-hook' setup function."
-
+  "Setup for `prog-mode'."
   (setq prettify-symbols-alist
 		'(("lambda" . ?λ)
+		  ;; ("Lambda" . ?Λ)
 		  ("!=" . ?≠)
 		  ("<=" . ?≤)
 		  (">=" . ?≥)))
   (prettify-symbols-mode 1)
 
-  ;; (buffer-face-set :family "SF Mono" :height 130)
-
-  (flycheck-mode 1)						; check for syntax
-
-  ;; enable for all programming modes
-  ;; http://emacsredux.com/blog/2013/04/21/camelcase-aware-editing/
-
-  (puni-mode 1)
-  (whitespace-mode 1)
+  (setq-local fill-column 70)			; smaller fill column
+  (flymake-mode 1)						; check for syntax
+  (subword-mode 1)
+  (puni-mode 1)							; generic paredit
+  (whitespace-mode 1)					; visualization of tab/space
   ;; (setq show-trailing-whitespace nil)
-  (electric-pair-mode 1)		  ; auto insert pairing delimiter
-  ;; (hs-minor-mode 1)				  ; code/comment fold
-  ;; (turn-on-auto-fill)			  ; auto indent
+  (electric-pair-mode 1)			   ; auto insert pairing delimiter
+  ;; (hs-minor-mode 1)					   ; code/comment fold
+  ;; (auto-fill-mode 1)				   ; auto indent
   ;; show doc in minibuffer area
   (turn-on-eldoc-mode))
 
-;; some major-modes do NOT inherited from prog-mode
 (add-hook 'prog-mode-hook #'generic-prog-mode-hook-setup)
 
+(with-eval-after-load 'elec-pair
+  (add-to-list 'electric-pair-pairs '(?{ . ?})))
+
 (with-eval-after-load 'prog-mode
-  (define-key prog-mode-map [?\M-o] 'avy-goto-line))
+  (define-key prog-mode-map [?\M-o] 'avy-goto-subword-1))
 
 (add-auto-mode 'octave-maybe-mode "\\.m$")
-(define-hook-setup 'octave-mode-hook
+(util:define-hook-setup 'octave-mode-hook
   "Set up of `octave-mode'."
   (abbrev-mode 1)
   (auto-fill-mode 1)
@@ -285,14 +313,17 @@ This function can be re-used by other major modes after compilation."
 			  comment-add 0))
 
 (use-package odin-mode
+  :commands (odin-mode)
   :straight (odin-mode :type git :host github
 					   :repo "mattt-b/odin-mode"
 					   :files ("*.el")))
-(use-package rust-mode :defer t :ensure t :mode "\\.rs\\'")
+
+(use-package rust-mode :ensure t :defer t :mode "\\.rs\\'")
 
 (use-package dart-mode :defer t :ensure t)
 (use-package kotlin-mode :defer t :ensure t)
 (use-package groovy-mode :defer t :ensure t) ; gradle syntax highlighting
+(use-package qml-mode :ensure t :defer t)
 
 ;; (autoload 'gradle-mode "gradle-mode")
 
@@ -300,8 +331,9 @@ This function can be re-used by other major modes after compilation."
   :config (setq julia-indent-offset 3))
 
 (use-package lua-mode :defer t :ensure t)
+
 ;; @see http://lua-users.org/wiki/LuaStyleGuide
-;; (define-hook-setup 'lua-mode-hook
+;; (util:define-hook-setup 'lua-mode-hook
 ;;   "Set up lua script."
 ;;   (unless (buffer-file-temp-p)
 ;;     (setq-local imenu-generic-expression
@@ -310,43 +342,22 @@ This function can be re-used by other major modes after compilation."
 ;;                   ("Module" "^ *module +\\([^ ]+\\) *$" 1)
 ;;                   ("Variable" "^ *local +\\([^ ]+\\).*$" 1)))))
 
-(require-package 'eglot)
-(with-eval-after-load 'eglot
+(use-package go-mode :ensure t :defer t)
+
+(use-package eglot :ensure t
+  :commands (eglot)
+  :config
   (setq eglot-confirm-server-initiated-edits nil))
-
-(use-package lsp-mode :ensure t
-  :disabled
-  :defer t
-  :init (setq lsp-keymap-prefix "C-c l")
-  (use-package lsp-ui :ensure t
-	:disabled
-	:defer t
-	:init
-	(setq lsp-ui-doc-enable nil
-		  lsp-ui-doc-position 'top
-		  lsp-ui-doc-include-signature t
-		  lsp-ui-doc-show-with-mouse nil)
-	;; (custom-set-faces
-	;;  '(lsp-ui-doc-header ((t (:weight bold)))))
-	;; (add-hook 'lsp-ui-doc-frame-hook)
-	(add-hook 'lsp-ui-doc-frame-mode-hook
-			  (defun lsp-ui-doc-frame-setup ()
-		(setq-local display-line-numbers nil)))))
-
-(use-package qml-mode :ensure t)
 
 ;;; Web
 
 (require-package 'tagedit) ; paredit for html
 
-(define-hook-setup 'web-mode-hook
+(util:define-hook-setup 'web-mode-hook
   (setq-local my/flyspell-check-doublon nil))
 
 (with-eval-after-load 'web-mode
-  ;; make org-mode export fail, I use evil and evil-matchit
-  ;; to select text, so expand-region.el is not used
-  (remove-hook 'web-mode-hook 'er/add-web-mode-expansions)
-  (setq web-mode-enable-auto-closing t ; enable auto close tag in text-mode
+  (setq web-mode-enable-auto-closing t	; auto close tag
 		web-mode-enable-auto-pairing t
 		web-mode-enable-css-colorization t)
   (setq web-mode-imenu-regexp-list
@@ -358,7 +369,7 @@ This function can be re-used by other major modes after compilation."
 
 ;;; Css
 
-(require-package 'rainbow-mode)
+(use-package rainbow-mode :ensure t :defer t)
 
 (defun common-css-mode-setup ()
   "Css mode setup."
@@ -396,8 +407,7 @@ This function can be re-used by other major modes after compilation."
 ;; (dap-firefox-setup 'force)
 
 ;; skewer doesn't support require or import
-(use-package skewer-mode
-  :ensure t
+(use-package skewer-mode :ensure t :defer t
   ;; Extra:
   ;; https://sachachua.com/blog/2014/11/emacs-evaluating-javascript-css-chrome-using-skewer-mode/
   :config
@@ -522,10 +532,7 @@ using e.g. my/skewer-load-file."
 		  (insert-file-contents path)
 		(insert "")))))
 
-(add-auto-mode 'js-mode
-			   "\\.ja?son$"
-			   "\\.pac$"
-			   "\\.jshintrc$")
+(add-auto-mode 'js-mode "\\.ja?son$" "\\.pac$" "\\.jshintrc$")
 (add-auto-mode 'rjsx-mode "\\.tsx\\'")
 
 (add-to-list 'interpreter-mode-alist '("node" . js2-mode))
@@ -549,7 +556,7 @@ using e.g. my/skewer-load-file."
   (local-require 'js-comint)
   (subword-mode 1))
 
-(define-hook-setup 'js-mode-hook :mo
+(util:define-hook-setup 'js-mode-hook :mo
   (unless (derived-mode-p 'js2-mode)
 	(my/common-js-setup)
 	(setq imenu-generic-expression js-common-imenu-regex-list)))
@@ -559,7 +566,7 @@ using e.g. my/skewer-load-file."
   (modify-syntax-entry ?$ "w" js-mode-syntax-table))
 
 (with-eval-after-load 'js2-mode
-  (define-keys js2-mode-map
+  (util:define-keys js2-mode-map
 	;; disable hot keys for elements hiding/showing
 	(kbd "C-c C-e") nil
 	(kbd "C-c C-s") nil
@@ -579,7 +586,7 @@ using e.g. my/skewer-load-file."
    js2-strict-inconsistent-return-warning nil ; return <=> return null
    js2-bounce-indent-p t)
   (setq-default js2-additional-externs '())
-  (define-hook-setup 'js2-mode-hook
+  (util:define-hook-setup 'js2-mode-hook
 	(my/common-js-setup)
 	;; if use node.js we need nice output
 	(js2-imenu-extras-mode)
@@ -598,7 +605,7 @@ using e.g. my/skewer-load-file."
 
 (use-package typescript-mode :ensure t :defer t
   :config
-  (define-hook-setup 'typescript-mode-hook
+  (util:define-hook-setup 'typescript-mode-hook
 	(setq imenu-generic-expression js-common-imenu-regex-list)))
 
 ;;; Python
@@ -619,7 +626,7 @@ using e.g. my/skewer-load-file."
   (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
   (setq elpy-rpc-python-command "python3")
 
-  (define-keys elpy-mode-map
+  (util:define-keys elpy-mode-map
 	(kbd "C-c C-c") nil
 	[C-return] nil))
 
@@ -640,8 +647,7 @@ using e.g. my/skewer-load-file."
 	:hook (tuareg-mode . merlin-eldoc-setup)))
 
 (use-package python :ensure t
-  :defer t
-  ;; :mode ("\\.py\\'" . python-mode)
+  :commands (python-mode)	  ; ("\\.py\\'" .)
   ;; :interpreter ("python" . python-mode)
   :config
   (add-to-list 'process-coding-system-alist '("python" . (utf-8 . utf-8)))
@@ -677,6 +683,7 @@ using e.g. my/skewer-load-file."
 	(elsvg-update-svg-buffer-on-save)))
 
 (use-package verilog-mode
+  :commands (verilog-mode)
   :config
   (setq verilog-indent-lists nil
 		verilog-auto-lineup 'all
@@ -694,10 +701,9 @@ using e.g. my/skewer-load-file."
 			   (user-error "Unknown prefix-arg %s" arg)))))
 	  (verilog-set-compile-command))))
 
-(use-package vhdl-mode
-  :after flycheck
-  :config
-  (setq flycheck-ghdl-language-standard "08"))
+;; (use-package vhdl-mode
+;;   :config
+;;   (setq flycheck-ghdl-language-standard "08"))
 
 (provide 'init-prog-modes)
 ;;; init-prog-modes.el ends here

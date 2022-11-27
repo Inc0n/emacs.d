@@ -26,7 +26,7 @@
 
 ;; provide annotations in minibuffer
 (use-package marginalia :ensure t
-  :defer 1
+  :defer t
   :config
   ;; add notation for variables values
   (defun marginalia-annotate-command-maybe-mode (cand)
@@ -59,24 +59,44 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
   ;; Disable dynamic resize, this is too jumpy
   (setq vertico-resize nil)				; 'grow-only
   ;; C-prefix is better since C-n and C-p, better ergonomics
-  (define-keys vertico-map
+  (util:define-keys vertico-map
     [?\C-o] nil
 	[?\M-o] #'embark-act				; embark intergration
     [C-return] #'vertico-exit-input
 	[wheel-up] #'vertico-previous
 	[wheel-down] #'vertico-next)
-  :init (add-hook 'minibuffer-mode-hook 'vertico-mode))
+  :init
+  ;; First, minibuffer would have no
+  (with-eval-after-load 'minibuffer
+	(vertico-mode 1)))
 
 (use-package embark :ensure t
   :defer t
   :config (define-key embark-file-map "f" 'my/browse-file))
+
+(use-package icomplete
+  :disabled
+  :config
+  (setq icomplete-tidy-shadowed-file-names t
+        icomplete-show-matches-on-no-input t
+        icomplete-hide-common-prefix nil
+        icomplete-scroll t
+        completion-flex-nospace nil
+        completion-category-defaults nil
+        completion-ignore-case t
+        read-buffer-completion-ignore-case t
+        read-file-name-completion-ignore-case t)
+  :init
+  (setq icomplete-max-delay-chars 2
+		icomplete-delay-completions-threshold 9000
+		icomplete-compute-delay 0.1))
 
 ;; more at
 ;; https://kristofferbalintona.me/posts/cape/
 (use-package cape :ensure t
   :defer t
   :init
-  (define-keys global-map
+  (util:define-keys global-map
     (kbd "C-c p t") 'complete-tag        ;; etags
     (kbd "C-c p d") 'cape-dabbrev        ;; or dabbrev-completion
     (kbd "C-c p f") 'cape-file
@@ -115,7 +135,7 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
 			(lambda ()
 			  (kill-local-variable 'completion-in-region-function)))
   ;; No need for corfu-complete
-  (define-keys corfu-map
+  (util:define-keys corfu-map
 	[remap completion-at-point] nil
 	[remap next-line] nil				; #'corfu-next
 	[remap previous-line] nil			; #'corfu-previous
@@ -125,7 +145,7 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
 	;; [?\M-n] #'corfu-doc-scroll-up
 	[?\M-n] #'corfu-next)
 
-  (setq corfu-auto-delay 0.1)
+  (setq corfu-auto-delay 0.15)
   (setq corfu-on-exact-match 'insert)
   ;; integrating corfu and various shell modes
   (with-eval-after-load 'eshell
@@ -201,7 +221,7 @@ Returns non-nil if an expansion was made and nil otherwise."
 (use-package tempel :ensure t
   :defer t
   :config
-  (define-keys tempel-map
+  (util:define-keys tempel-map
     [?\C-n] 'tempel-next
     [?\C-p] 'tempel-previous
     [tab] 'tempel-next
@@ -280,32 +300,52 @@ Returns non-nil if an expansion was made and nil otherwise."
 
 (setq completion-cycle-threshold 3)
 
-(autoload 'pyim-cregexp-build "pyim")
-
-(defvar my/enable-pinyin-in-completing-read nil)
+(when (version<= "29" emacs-version)
+  (setq completion-format 'one-column
+		completion-header-format nil
+		completino-max-height 20
+		completino-auto-select nil)
+  (define-keys minibuffer-mode-map
+	"" 'minibuffer-next-completion
+	"" 'minibuffer-previous-completion)
+  (define-keys completion-in-region-mode-map
+	"" 'minibuffer-next-completion
+	"" 'minibuffer-previous-completion
+	(kbd "M-RET")
+	(lambda (&optional no-exit no-quit) (interactive "P")
+	  (with-minibuffer-completions-window
+	   (let ((completion-use-base-affixes nil))
+		 (choose-completion nil no-exit no-quit))))))
 
 (setq completion-styles '(orderless)
       completion-category-defaults nil
       completion-category-overrides '((file (styles partial-completion))))
 
+(autoload 'pyim-cregexp-build "pyim")
+(autoload 'pinyinlib-build-regexp-string "pinyinlib")
+
 (defun match-pinyin (str)
-    "A completion style for pinyin that builds on STR.
+  "A completion style for pinyin that builds on STR.
 To avoid lag, it does not match if length is more than 2000."
-    ;; orderless-regexp
-    ;; Needs to be careful for the regexp to get too long.
-    (let ((pinyin-regexp (pyim-cregexp-build str)))
-      (if (<= (length pinyin-regexp) 2000)
-          pinyin-regexp
-        (message "%s is too long for pinyin" (length pinyin-regexp))
-        str)))
+  (let ((pinyin-regexp				; (pyim-cregexp-build str)
+		 (pinyinlib-build-regexp-string str)))
+	;; Only activate in mini-buffers
+    (if (minibufferp)
+		;; Needs to be careful for the regexp to get too long.
+		(if (<= (length pinyin-regexp) 2000)
+			pinyin-regexp
+		  (message "%s is too long for pinyin" (length pinyin-regexp))
+          str)
+	  str)))
 
 (use-package orderless :ensure t
   :defer t
   :config
   (setq orderless-matching-styles
-        '(orderless-literal
-          orderless-regexp
-          orderless-flex)))
+        '(match-pinyin
+		  ;; orderless-flex
+		  orderless-literal
+          orderless-regexp)))
 
 ;; it has other scoring/sorting backends such as fzf
 (use-package fussy :ensure t :defer t
@@ -329,11 +369,11 @@ Use `orderless' for filtering by passing STRING, TABLE and PRED to
   (setq fussy-filter-fn 'fussy-filter-orderless
 		fussy-score-fn 'flx-score))
 
-(defun completing-swiper ()
-  "My swiper, which also can record macro at end of search."
-  (interactive)
-  (consult-line (util/thing-at-point/deselect))
-  (completing--yank-search (car consult--line-history)))
+;; (defun completing-swiper ()
+;;   "My swiper, which also can record macro at end of search."
+;;   (interactive)
+;;   (consult-line (util/thing-at-point/deselect))
+;;   (completing--yank-search (car consult--line-history)))
 
 (defun completing-ripgrep (init-input)
   "My version of ripgrep.

@@ -1,8 +1,6 @@
 ;; -*- coding: utf-8; lexical-binding: t; -*-
 ;;; Code:
 
-(require-package 'magit)
-
 (with-eval-after-load 'magit
   ;; (define-key magit-mode-map [C-tab] 'nil)
   )

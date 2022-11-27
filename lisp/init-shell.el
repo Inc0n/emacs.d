@@ -26,6 +26,15 @@
   (autoload 'time-stamp-string "time-stamp.el")
   ;; When was prompt prompted? Inspired from:
   ;; https://redandblack.io/blog/2020/bash-prompt-with-updating-time/
+  (setq eshell-prompt-regexp
+        (mapconcat
+         (lambda (str) (concat "\\(" str "\\)"))
+         '("^[^#$\n]* [#$] "			; default
+           ;; "^\\(mysql\\|[ ]\\{4\\}[-\"'`]\\)> "
+           "^>>> "						; python
+           ;; "^ftp> "
+           )
+         "\\|"))
   (setq eshell-prompt-function
 		(lambda ()
 		  (concat
@@ -47,7 +56,7 @@
   ;; `eshell-aliases-file'
   ;; "/Users/xception/.emacs.d/eshell/alias"
   (with-eval-after-load 'esh-mode
-	(define-keys eshell-mode-map
+	(util:define-keys eshell-mode-map
 	  [?\M-q] 'quit-window
 	  [?\C-l] 'eshell/clear
 	  [?\C-c ?l] (lambda () (interactive)
@@ -122,7 +131,9 @@ Show COMMAND images within eshell buffer")
   ;; Github prompt is like "Password for 'https://user@github.com/':"
   ;; (setq comint-password-prompt-regexp
   ;; 		(format "%s\\|^ *Password for .*: *$" comint-password-prompt-regexp))
-  (setq comint-prompt-read-only t)
+  (setq comint-prompt-read-only t
+		comint-buffer-maximum-size 2048)
+  (add-to-list 'comint-output-filter-functions 'comint-truncate-buffer)
   (define-key comint-mode-map
     ;; Don't show trailing whitespace in REPL.
     (kbd "M-;") #'comment-dwim))
@@ -132,29 +143,31 @@ Show COMMAND images within eshell buffer")
   (add-hook 'comint-output-filter-functions #'ansi-color-process-output)
   (add-hook 'gud-mode-hook 'ansi-color-for-comint-mode-on))
 
-(use-package vterm :ensure nil
-  :load-path"~/.emacs.d/site-lisp/emacs-libvterm/"
+(use-package vterm :ensure t
+  :commands (vterm)
+  ;; :load-path"~/.emacs.d/site-lisp/emacs-libvterm/"
   :config
   ;; (add-to-list 'vterm-eval-cmds '("quick-view" posframe-quick-view-file))
-  (setq vterm-environment (list (format "EMACS_PATH=%s" (file-truename user-emacs-directory))))
+  (setq vterm-environment
+		(list (format "EMACS_PATH=%s" (file-truename user-emacs-directory))))
 
   ;; setting these keys to nil to allow them to function normally
   (define-key vterm-copy-mode-map
 	[?\M-w] #'vterm-copy-mode-done)
 
-  (define-keys vterm-mode-map
-    [?\C-\M-b] 'vterm-send-key-interactive
-    [?\C-\M-f] 'vterm-send-key-interactive
-	[?\C-x ?\C-f] nil
+  (util:define-keys vterm-mode-map
+	[?\C-\M-k] [?\M-d]
+    [?\C-\M-b] 'vterm--self-insert
+    [?\C-\M-f] 'vterm--self-insert
+	;; [?\C-x ?\C-f] nil
 	;; (lambda () (interactive)
 	;;   (vterm-send "C-a")
 	;;   (vterm-send "C-k")
 	;;   (vterm-send-string "cd ")
 	;;   (vterm-send-string
 	;;    (file-name-directory (read-file-name "File: "))))
-    [remap undo] 'vterm-undo
 	;; free the following key
-    [?\M->] nil
+    ;; [?\M->] nil
     [?\M-w] nil
     [?\C-s] nil)
 
@@ -184,35 +197,34 @@ Show COMMAND images within eshell buffer")
       (vterm-send-string directory)
       (vterm-send-return)))
 
-  (defun vterm-translate-event-to-args (event)
-    (let ((modifiers (event-modifiers event))
-		  (base (event-basic-type event)))
-      (list (char-to-string base)
-			(memq 'shift modifiers)
-			(memq 'meta modifiers)
-			(memq 'control modifiers))))
-
-  (defun vterm-send-key-interactive
-      (key &optional shift meta ctrl accept-proc-output)
-    (interactive (vterm-translate-event-to-args last-command-event))
-    (vterm-send-key key shift meta ctrl accept-proc-output))
-
   (add-hook 'vterm-mode-hook
 			(defun vterm-mode-setup ()
 			  (vterm-send-string
 			   "source $EMACS_PATH/etc/emacs-vterm-zsh.sh\n"))))
 
 (defun open-shell ()
+  (interactive)
+  (if (null prefix-arg)
+	  (vterm)
+	(let* ((win (selected-window))
+		   (dir (with-current-buffer (window-buffer win)
+				  default-directory)))
+	  (vterm-cd dir)
+	  (setq prefix-arg nil))))
+
+(defun open-shell ()
   "Interface for skhd integration."
   (interactive)
   ;; Not using as this forces pop-to-buffer-same-window
   ;; (eshell)
-  (message "prefix-arg: %s" prefix-arg)
+  (require 'eshell)						; load this first
   (let* ((win (selected-window))
 		 (dir (with-current-buffer (window-buffer win)
 				default-directory))
 		 (buf (get-buffer-create eshell-buffer-name)))
-	(pop-to-buffer buf)
+	(switch-to-buffer buf)
+	(unless (derived-mode-p 'eshell-mode)
+      (eshell-mode))
 	(when prefix-arg
 	  ;; ls after cd complains since this is not interactive
 	  (ignore-error 'error (eshell/cd dir))
@@ -232,25 +244,6 @@ Show COMMAND images within eshell buffer")
 	(pcase major-mode
 	  ('eshell-mode (eshell-send-input))
 	  ('shell-mode (comint-send-input)))))
-
-(use-package xterm-color :ensure t
-  :disabled
-  :defer t
-  :init
-  ;; (remove-hook 'shell-mode-hook 'shell-mode-hook@xterm-color)
-  (add-hook
-   'shell-mode-hook
-   (defun shell-mode-hook@xterm-color ()
-	 (setq-local corfu-auto nil)
-	 (setq-local comint-output-filter-functions
-				 (remove 'ansi-color-process-output
-						 comint-output-filter-functions))
-	 ;; Disable font-locking in this buffer to improve performance
-     (font-lock-mode -1)
-     ;; Prevent font-locking from being re-enabled in this buffer
-     (make-local-variable 'font-lock-function)
-     (setq font-lock-function (lambda (_) nil))
-     (add-hook 'comint-preoutput-filter-functions 'xterm-color-filter nil t))))
 
 (provide 'init-shell)
 ;;; init-shell.el ends here

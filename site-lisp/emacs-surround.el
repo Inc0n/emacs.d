@@ -31,13 +31,14 @@
   :group 'surround)
 
 (defcustom emacs-surround-alist
-  '((""   . (""  . ""))
-    ("'"  . ("'" . "'"))
+  '(;; (""   . (""  . ""))
+    ;; ("'"  . ("'" . "'"))
     ("("  . ("(" . ")"))
     ("{"  . ("{" . "}"))
     ("["  . ("[" . "]"))
-    ("/"  . ("/" . "/"))
-    ("\"" . ("\"" . "\"")))
+    ;; ("/"  . ("/" . "/"))
+    ;; ("\"" . ("\"" . "\""))
+	)
   "Surround key list."
   :group 'emacs-surround)
 
@@ -140,7 +141,7 @@ PREFIX and SUFFIX are replace string."
    "" str))
 
 ;;;###autoload
-(defun emacs-surround (arg)
+(defun emacs-surround-at-point (arg)
   "Surround or Delete symbol etc.
 if cmd1 is i(insert), surround at-point-symbol.
 if cmd1 is d(delete), delete surround cmd2 char.

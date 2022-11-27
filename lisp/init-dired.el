@@ -2,7 +2,6 @@
 ;;; Code:
 
 (require-package 'diredfl) ; font lock for `dired-mode'
-(require-package 'find-by-pinyin-dired)
 
 (defun diredext-exec-git-command-in-shell (command &optional arg file-list)
   "Run a shell command `git COMMAND`' on the marked files.
@@ -91,7 +90,7 @@ Now use dired-diff under the hood."
   ;; avy, jump between texts, like easymotion in vim @see
   ;; http://emacsredux.com/blog/2015/07/19/ace-jump-mode-is-dead-long-live-avy/
   ;; for more tips
-  (define-keys dired-mode-map
+  (util:define-keys dired-mode-map
     ";" 'avy-goto-subword-1
     "e" 'my/ediff-files
     "h" [?^]                            ; was describe-mode

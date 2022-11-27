@@ -3,11 +3,14 @@
 ;;; Commentary:
 ;;
 
-;;; Cpode:
+;;; Code:
 ;;
 
+(eval-when-compile (require 'cl-macs)
+				   (require 'use-package))
+
 (use-package repeat
-  :defer 2
+  :defer t
   :config (setq repeat-on-final-keystroke t)
   :init (add-hook 'emacs-startup-hook 'repeat-mode))
 
@@ -20,10 +23,10 @@
             (symbol-value map-name)))
     `(progn
        (defvar ,map-name (make-sparse-keymap))
-       ,@(cl-loop for (key command) on key-binds by #'cddr
-                  collect `(define-key ,map-name ,key ,command))
-       ,@(cl-loop for (key command) on key-binds by #'cddr
-                  collect `(put ,command 'repeat-map ',map-name))
+       (cl-loop for (key command) on (list ,@key-binds) by #'cddr
+                collect (define-key ,map-name key command))
+       (cl-loop for (_key . command) in (cdr ,map-name)
+                collect (put command 'repeat-map ',map-name))
        ',map-name)))
 
 ;; undo is already in this repeat map
@@ -33,11 +36,16 @@
   "u" 'winner-undo
   "r" 'winner-redo)
 
-(define-repeat-mode-map flycheck
-  "n" 'flycheck-next-error
-  "p" 'flycheck-previous-error
-  "h" 'flycheck-display-error-at-point
-  "e" 'flycheck-explain-error-at-point)
+;; (define-repeat-mode-map flycheck
+;;   "n" 'flycheck-next-error
+;;   "p" 'flycheck-previous-error
+;;   "h" 'flycheck-display-error-at-point
+;;   "e" 'flycheck-explain-error-at-point)
+
+(define-repeat-mode-map flymake
+  "n" 'flymake-goto-next-error
+  "p" 'flymake-goto-prev-error
+  "h" 'flymake-display-warning)
 
 ;; (define-repeat-mode-map flyspell
 ;;   "n" 'flyspell-goto-next-error

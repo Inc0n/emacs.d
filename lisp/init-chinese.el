@@ -18,14 +18,17 @@
          ;; "STFangSong"
 		 ;; "KaiTi SC"
          ;; "Hiragino Sans GB"
-		 "Songti SC"))
-    (dolist (charset '(kana han symbol cjk-misc bopomofo))
+		 "Songti SC"
+		 ))
+    (dolist (charset '(kana han ;; symbol, keep lambda pure
+							cjk-misc
+							bopomofo))
       (set-fontset-font (frame-parameter nil 'font) charset
                         (font-spec :family chinese
                                    ;; :size 16
                                    )))))
-(when (display-graphic-p)
-  (chinese/fix-font))
+;; Contamination
+;; (when (display-graphic-p) (chinese/fix-font))
 
 (setq face-font-rescale-alist '(("Hiragino Sans GB" . 1.2)))
 
@@ -67,7 +70,7 @@ Optional argument ARGS ."
   (require 'cal-china-x)
   (let* ((diary-date-forms
           chinese-date-diary-pattern)
-         
+
          ;; if chinese font width equals to twice of ascii font
          (calendar-day-header-array
           ["日" "一" "二" "三" "四" "五" "六"])

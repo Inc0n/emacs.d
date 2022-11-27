@@ -10,10 +10,20 @@
 (autoload 'popup-tip "popup")
 (autoload 'scrap-interface "scrap")
 
+(setq message-log-max 700)				; uses less space
 ;; Set `auto-window-vscroll' to nil to avoid triggering `format-mode-line'.
 (setq auto-window-vscroll nil)
 ;; (setq scroll-step 0
 ;;		 scroll-conservatively 0)
+
+(with-eval-after-load 'midnight
+  ;; (remove-hook 'midnight-hook 'elfeed-db-save-safe)
+  (autoload 'session-save-session "session")
+  (defun midnight-save-setup ()
+	(recentf-save-list)
+	(when (boundp 'emms-history-save) (emms-history-save))
+	(session-save-session))
+  (add-hook 'midnight-hook 'midnight-save-setup))
 
 ;; {{ misc
 (use-package emacs
@@ -21,7 +31,7 @@
   :config
   ;; midnight
   ;; purges buffers which haven't been displayed in configured period
-  (setq midnight-period (* 3600 12)) ;; 12 hours
+  (setq-default midnight-period (* 3600 12)) ;; 12 hours
   (midnight-mode 1)
 
   (mouse-wheel-mode 1)
@@ -32,11 +42,7 @@
   (recentf-mode +1)
   (global-subword-mode +1)
 
-  ;; visual
-  ;; (golden-ratio-mode +1)
   (transient-mark-mode +1)				; mark highlight
-
-  (which-function-mode -1)
 
   (autoload 'server-running-p "server")
   (unless (server-running-p)
@@ -45,39 +51,44 @@
 
   (global-auto-revert-mode 1)
 
-  (let ((font ;; "Fira Code"
-		 "SF Mono"))
+  (let ((font "Menlo"))
     ;; (set-face-attribute 'default nil :height 140)
 	(when (find-font (font-spec :name font))
-	  (set-face-attribute 'default nil :font font))))
+	  (set-face-attribute 'default nil
+						  :font font
+						  :height 140))))
 
 ;; (setq system-time-locale "C")
 (with-eval-after-load 'imenu
-  (setq imenu-max-item-length 60)
-  (setq imenu-auto-rescan t))
+  (setq-default imenu-max-item-length 60
+				imenu-auto-rescan t))
 
 (setq-default
- buffers-menu-max-size 30
+ ;; buffers-menu-max-size 10
  case-fold-search t
  ediff-split-window-function #'split-window-horizontally
  ediff-window-setup-function #'ediff-setup-windows-plain
  ;; grep-highlight-matches t
  ;; grep-scroll-output t
- tooltip-delay 0.7
+ tooltip-delay 0.5
  ;; require-final-newline t ; bad idea, could accidentally edit others' code
- mouse-yank-at-point nil
- mouse-highlight t
+ ;; NO automatic new line when scrolling down at buffer bottom
+ next-line-add-newlines nil
  truncate-lines nil
  truncate-partial-width-windows nil
- line-spacing 1)
+ ;; Show a marker in the left fringe for lines not after buffer end
+ indicate-empty-lines t
+ line-spacing 2)
 
-(setq mouse-wheel-progressive-speed nil)
+(setq mouse-yank-at-point nil
+	  mouse-highlight t
+	  mouse-wheel-progressive-speed nil)
 
 ;; visible-bell has some issue
 ;; @see https://github.com/redguardtoo/mastering-emacs-in-one-year-guide/issues/9#issuecomment-97848938
 (setq visible-bell nil 					; flashes white in dark themes
 	  ring-bell-function 'ignore		; C-wheelup triggers this tons
-	  enable-recursive-minibuffers t)
+	 )
 
 ;; trash configuration
 (if (eq system-type 'darwin)
@@ -93,22 +104,50 @@
 
 (setq save-interprogram-paste-before-kill t ; sync kill-ring and clipboard
 	  confirm-kill-emacs 'y-or-n-p
-	  history-delete-duplicates t
-	  ;; NO automatic new line when scrolling down at buffer bottom
-	  next-line-add-newlines nil)
+	  history-delete-duplicates t)
 
-(setq calc-symbolic-mode t
-	  calc-angle-mode 'rad)
+(with-eval-after-load 'calc
+  (setq calc-symbolic-mode t
+		calc-angle-mode 'rad))
 
-(setq-default tab-width 4)
-(setq tab-always-indent 'complete
-	  indent-tabs-mode nil)
-;; }}
+(setq-default tab-width 4
+			  indent-tabs-mode nil)
+(setq tab-always-indent 'complete)
+
+;; potentially can be made into a minor mode that wraps the current
+;; indent-line-function
+(defun indent-for-tab-command@move-delim (orig-func &optional arg)
+  "Move cursor out of any delimiters."
+  (let ((tick (buffer-chars-modified-tick))
+		(point (point)))
+	(funcall orig-func arg)
+	(when (and
+		   ;; check if buffer is not modified
+		   (eq tick (buffer-chars-modified-tick))
+		   ;; and cursor has not moved
+		   (eq point (point))
+		   ;; and char under cursor is of delim syntax
+		   (memq (char-syntax (following-char)) '(?\) ?\")))
+	  ;; (just-one-space 0)
+	  (forward-char 1))))
+
+(advice-add 'indent-for-tab-command :around
+			'indent-for-tab-command@move-delim)
+
+(defun backward-delim (&optional arg)
+  "Move cursor backwards of any delimiters."
+  (interactive)
+  ;; and char under cursor is of delim syntax
+  (when (memq (char-syntax (char-after (1- (point)))) '(?\( ?\"))
+	;; (just-one-space 0)
+	(forward-char 1)))
+
+(global-set-key [backtab] 'backward-delim)
 
 ;; @see http://blog.binchen.org/posts/effective-code-navigation-for-web-development.html
 ;; don't let the cursor go into minibuffer prompt
-(setq minibuffer-prompt-properties
-	  '(read-only t point-entered minibuffer-avoid-prompt face minibuffer-prompt))
+(setq minibuffer-prompt-properties '(read-only t face minibuffer-prompt)
+	   enable-recursive-minibuffers t)
 
 (require-package 'avy)
 (with-eval-after-load 'avy
@@ -130,17 +169,15 @@
 					  ;; "Liberation Mono"
 					  "Fira Code"
 					  "Source Code Pro"
-					  ;; "Hack"
+					  "Ubuntu Mono"
 					  "Iosevka"
 					  "JetBrains Mono"
-					  "Moneco"	   ;; monaco with ligatures
-					  "SF Mono"	   ; best
-					  "Menlo"	   ; osx default
-					  "Monocraft"
+					  "Monaco"
+					  "SF Mono"			; decent
+					  "Menlo"			; osx default
 					  "CozetteVector"
 					  "Iosevka SS02"
-					  ;; "Amiri Typewriter"
-					  ;; "Alegreya"
+					  "Iosevka Curly"
 					  "Courier Prime"
 					  "Anonymous Pro"
 					  "PT Mono"
@@ -148,9 +185,8 @@
   (set-face-attribute 'default nil :font font)
   ;; Update fixed-pitch
   (set-face-attribute 'fixed-pitch nil :font font)
-  ;; (set-face-attribute 'default nil :height 150)
-  ;; (set-face-attribute 'default nil :family "Monospace")
-  (chinese/fix-font)
+  ;; (set-face-attribute 'default nil :height 140 :family "Monospace")
+  ;; (chinese/fix-font)
   (message "Font: %s" font))
 
 (use-package ace-link :ensure t
@@ -161,11 +197,14 @@
 (use-package isearch
   :config
   (defun my/isearch-at-point-maybe (arg)
+	"Enhanced `isearch', also respect `isearch-regexp'"
 	(interactive "P")
-	(cond ((equal '(4) arg) (isearch-forward-thing-at-point))
-		  ;; Use [M-s .] instead
-		  ;; ((equal '(16) arg) (isearch-forward-symbol-at-point))
-		  (:else (call-interactively 'isearch-forward))))
+	(cond ((equal '(4) arg)
+		   (isearch-forward-thing-at-point))
+		  (:else
+		   (save-excursion
+			 (goto-char (window-start))
+			 (isearch-forward isearch-regexp :non-recursive-edit)))))
 
   (defun isearch-within-defun-cleanup ()
 	(widen)
@@ -179,27 +218,18 @@
 
   (defun my/isearch-query-replace ()
 	(interactive)
-	(if (or (null isearch-string)
-			(string-empty-p isearch-string))
-		(message "Empty text to replace")
-	  (when isearch-forward				; goto start of candidate
-		(isearch-repeat-backward))
-	  (isearch-exit)					; needs to quit before
-	  (visual-replace-regexp-text-at-point
-	   isearch-string isearch-regexp)))
+	(autoload 'vr/query-replace "visual-regexp")
+	(when isearch-forward				; goto start of candidate
+	  (isearch-repeat-backward))
+	(isearch-exit)					; needs to quit before
+	(call-interactively 'vr/query-replace))
 
-  (define-keys isearch-mode-map
-	[?\M-q] #'my/isearch-query-replace)
+  (define-key isearch-mode-map [?\M-q] #'my/isearch-query-replace)
   :init
   (setq isearch-lazy-count t			; enable match numbers count
 		isearch-lazy-highlight t
 		lazy-count-prefix-format "%s/%s "
 		lazy-highlight-cleanup t))
-
-(with-eval-after-load 'bookmark
-  ;; use my own bookmark if it exists
-  (when (file-exists-p (file-truename "~/.emacs.bmk"))
-	(setq bookmark-file (file-truename "~/.emacs.bmk"))))
 
 (with-eval-after-load 'whitespace
   (setq whitespace-style
@@ -208,7 +238,7 @@
 		  ;; space-after-tab				; spaces before tab
 		  indentation::tabs					; tabs at line beg
 
-		  tabs							; tabs (show by face)
+		  ;; tabs							; tabs (show by face)
 		  ;; lines
 		  ;; tab-mark					   ; tabs (show by symbol)
 		  lines-tail					; lines go beyond `fill-column'
@@ -222,10 +252,11 @@
   (interactive)
   (beginning-of-line)
   (when (search-forward "TODO" (line-end-position) 'no-error)
-	(replace-match (format "DONE %s"
-						   (with-temp-buffer
-							 (org-insert-time-stamp nil)
-							 (buffer-string))))))
+	(replace-match
+	 (format "DONE %s"
+			 (with-temp-buffer
+			   (org-insert-time-stamp nil)
+			   (buffer-string))))))
 
 (use-package dumb-jump :ensure t
   :defer t
@@ -364,28 +395,31 @@
 		  (defun my/minibuffer-setup-hook ()
 			(when (bound-and-true-p vertico-buffer-mode)
 			  (setq-local display-line-numbers nil))
-			(setq gc-cons-threshold most-positive-fixnum)))
-(add-hook 'minibuffer-exit-hook
-		  (defun my/minibuffer-exit-hook ()
-			(setq gc-cons-threshold my/normal-gc-cons-threshold)))
+			;; (setq gc-cons-threshold most-positive-fixnum)
+			))
+(remove-hook 'minibuffer-exit-hook
+			 (defun my/minibuffer-exit-hook ()
+			   (setq gc-cons-threshold my/normal-gc-cons-threshold)))
 
-(use-package emms :defer t
-  :ensure t
+(use-package emms :ensure t
+  :commands (emms)
   :config
   (emms-all)
   ;; (emms-minimalistic)
   ;; (emms-default-players)
   ;; Only installed player: MPV
-  (setq emms-player-list '(emms-player-mpv))
+  (setq emms-player-list '(emms-player-mpv)
+		emms-info-native--id3v2-text-encodings
+		'((0 . utf-8)			; was latin-0, seems to be the problem
+		  (1 . utf-16) (2 . uft-16be) (3 . utf-8)))
   ;; emms-info-functions
   ;; To handle unicode properly in tag editor
   (emms-i18n-set-default-coding-system 'utf-8 'utf-8)
-  (setq emms-source-file-default-directory
-		"~/Music/playlist/"
+  (setq emms-source-file-default-directory "~/Music/playlist/"
         emms-info-asynchronously t
 		emms-repeat-playlist t)
   (setq emms-mode-line-icon-enabled-p nil
-		emms-mode-line-format " [♩♪%s]"
+		emms-mode-line-format " [♪ %s]"
 		emms-mode-line-mode-line-function
 		(lambda () ;; display song name only
 		  (or (emms-track-get
@@ -399,7 +433,7 @@
 			'info-title)
 		   ;; emms-playing-time-string
 		   )))
-  (define-keys emms-playlist-mode-map
+  (util:define-keys emms-playlist-mode-map
 	"e" 'emms-tag-editor-edit
 	"g" 'emms-pause
 	"N" 'emms-next
@@ -409,7 +443,7 @@
   (emms-playing-time-mode 1)
 
   (with-eval-after-load 'emms-tag-editor
-	(setcar 							; id3v2 not mid3v2
+	(setcar 							; id3v2 installed not mid3v2
 	 (cdr (assoc "mp3" emms-tag-editor-tagfile-functions))
 	 "id3v2")))
 
@@ -459,9 +493,63 @@
   ;; display long lines in truncated style (end line with $)
   (add-hook 'grep-mode-hook (lambda () (setf truncate-lines nil))))
 
-(use-package rg
-  :ensure t
-  :defer t)
+(use-package emacs-popup
+  :init
+  (defvar emacs-popup--current-frame nil)
+  (defvar emacs-popup-buffer-name "*Emacs Everywhere*")
+
+  (defun emacs-popup-delete-frame ()
+	(when (and emacs-popup--current-frame
+			   (framep emacs-popup--current-frame)
+			   (frame-live-p emacs-popup--current-frame))
+	  (remove-hook 'delete-frame-functions 'emacs-popup-finish :local)
+	  (let ((copy emacs-popup--current-frame))
+		;; make a copy to ensure won't trap in loop of the hooks
+		(setq emacs-popup--current-frame nil)
+		(delete-frame copy))))
+
+  (defun emacs-popup-finish ()
+	(interactive)
+	(when-let ((buf (get-buffer emacs-popup-buffer-name)))
+	  (when (buffer-live-p buf)
+		(clipboard-kill-ring-save
+		 (point-min)
+		 (point-max))
+		;; prevent loop hell
+		;; (remove-hook 'kill-buffer-hook 'emacs-popup-delete-frame :local)
+		(kill-buffer emacs-popup-buffer-name)))
+	;; prevent loop hell
+	;; (emacs-popup-delete-frame)
+	)
+
+  (defvar emacs-popup-mode-map
+	(let ((map (make-sparse-keymap)))
+	  (define-key map "" 'emacs-popup-finish)
+	  map))
+
+  (define-minor-mode emacs-popup-mode
+	""
+	:global nil
+	:init-value nil
+	:keymap emacs-popup-mode-map
+	(if emacs-popup-mode
+		(progn
+		  (add-hook 'kill-buffer-hook 'emacs-popup-delete-frame
+					0 :local)
+		  (add-hook 'delete-frame-functions 'emacs-popup-finish
+					0 :local))))
+
+  (defun emacs-popup ()
+	;; (interactive)
+	;; (remove-hook 'delete-frame-functions 'ea-on-delete)
+	(emacs-popup-delete-frame)
+	(setq emacs-popup--current-frame (make-frame))
+	(select-frame emacs-popup--current-frame)
+	;; (select-frame-set-input-focus emacs-popup--current-frame)
+	(switch-to-buffer emacs-popup-buffer-name)
+	(emacs-popup-mode 1)
+	)
+  (provide 'emacs-popup))
 
 ;; {{ https://www.emacswiki.org/emacs/EmacsSession better than "desktop.el" or "savehist".
 ;; Any global variable matching `session-globals-regexp' is saved automatically.
@@ -522,51 +610,6 @@ With two PREFIX arguments, write out the day and month name."
 		pomodoro-long-break-time 5
 		pomodoro-work-time 15))
 
-;; epub setup
-(use-package nov :ensure t
-  :defer t
-  :mode ("\\.epub\\'" . nov-mode)
-  :config
-  (setq nov-text-width t)
-  (define-keys nov-mode-map
-	"j" 'next-line
-	"k" 'previous-line)
-  (add-hook 'nov-post-html-render-hook
-			(defun nov-post-html-render-setup ()
-			  (call-interactively 'my/fill-buffer)))
-
-  (define-hook-setup 'nov-mode-hook
-	;; (face-remap-add-relative 'variable-pitch
-	;;							:family "Libreation Serif"
-	;;							:width 'semi-expanded)
-	(face-remap-add-relative 'variable-pitch :family "Baskerville")
-	(face-remap-add-relative 'fixed-pitch-serif :family "Baskerville")
-	(face-remap-add-relative 'variable-pitch-serif :family "Baskerville")
-	(setq-local line-spacing 0.0)
-	;; TODO: find a way to center text by only left fringe
-	(setq-local visual-fill-column-center-text t
-				visual-fill-column-width 70
-				;; Additional margin needed for Unicode text width
-				visual-fill-column-extra-text-width '(0 . 5))
-	;; (visual-fill-column-mode 1)
-	(readroom-mode 1)
-	;; 1.5 scale of current font height
-	;; (set-face-attribute 'default (selected-frame) :height (truncate (* 1.5 (face-attribute 'default :height))))
-	(setq-local simple-modeline-segments
-				`((simple-modeline-segment-winum
-				   simple-modeline-segment-evil-modal
-				   simple-modeline-segment-modified
-				   simple-modeline-segment-nov-info)
-				  (simple-modeline-segment-position
-				   simple-modeline-segment-major-mode)))))
-
-(use-package nov-xwidget
-  :disabled
-  :straight (nov-xwidget :host github :repo "chenyanming/nov-xwidget" :type git)
-  :config
-  (add-to-hook 'nov-mode-hook #'nov-xwidget-inject-all-files))
-;; }}
-
 (use-package which-key :ensure t
   :defer t
   :init
@@ -581,11 +624,11 @@ With two PREFIX arguments, write out the day and month name."
   (add-hook 'after-init-hook 'which-key-mode))
 
 (use-package flycheck :ensure t
+  :disabled					 ; Apparently emacs26+ flymake became good
   :defer t
   :config
-  ;; Region selection and background get mixed up
-  (custom-set-faces
-	'(flycheck-warning ((t (:background nil)))))
+  ;; Otherwise, region selection and background get mixed up
+  (custom-set-faces '(flycheck-warning ((t (:background nil)))))
   :init
   ;; (when (require-package 'flycheck-color-mode-line)
   ;;   (setq flycheck-color-mode-line-face-to-color 'mode-line)
@@ -740,6 +783,7 @@ With two PREFIX arguments, write out the day and month name."
 
 ;; this is global mode only package ..... and that sucks.
 (use-package beacon :ensure t
+  :defer t
   :config
   (setq beacon-blink-when-point-move-vertically nil
 		beacon-blink-when-focused nil)
@@ -753,35 +797,40 @@ With two PREFIX arguments, write out the day and month name."
   )
 
 (use-package elfeed :ensure t
-  :disabled
   :defer t
   :config
+  (with-eval-after-load 'midnight
+	(add-hook 'midnight-hook 'elfeed-db-save-safe)
+	(add-hook 'midnight-hook 'elfeed-db-gc-safe))
   (setq elfeed-db-directory (expand-file-name "elfeed" user-emacs-directory)
 		elfeed-show-entry-switch 'display-buffer)
   (setq elfeed-feeds
 		'(;; programming
-		  ("https://news.ycombinator.com/rss" hacker news)
-		  ("https://buttondown.email/hillelwayne/rss" programming)
+		  ;; ("https://news.ycombinator.com/rss" hacker news)
+		  ;; ("https://buttondown.email/hillelwayne/rss" programming)
 
 		  ;; reddit
 		  ("https://www.reddit.com/r/programming.rss" programming news)
-		  ("https://www.reddit.com/r/ReverseEngineering.rss" hacker news)
-		  ("https://www.reddit.com/r/philosophy/top.rss?t=week" philosophy news)
+		  ;; ("https://www.reddit.com/r/ReverseEngineering.rss" hacker news)
+		  ;; ("https://www.reddit.com/r/philosophy/top.rss?t=week" philosophy news)
 		  ("https://www.reddit.com/r/emacs/top.rss?t=week" emacs news)
 		  ("https://www.reddit.com/r/lisp/top.rss?t=week" lisp news)
 
-		  ("https://www.hltv.org/rss/news" csgo news)
+		  ("https://dustycloud.org/blog/" lisp blog)
+
+		  ;; ("https://www.hltv.org/rss/news" csgo news)
 		  ;; how to get youtube channel rss
 		  ;; window["ytInitialData"].metadata.channelMetadataRenderer.rssUrl
-		  ("https://www.youtube.com/feeds/videos.xml?channel_id=UCTkXRDQl0luXxVQrRQvWS6w" dream youtube)
+		  ;; ("https://www.youtube.com/feeds/videos.xml?channel_id=UCTkXRDQl0luXxVQrRQvWS6w" dream youtube)
 		  ;; blog
-		  ("https://mstmetent.blogspot.com/feeds/posts/default?alt=rss" sbcl)
-		  ("https://asahilinux.org/blog/index.xml" asahilinux)))
+		  ;; ("https://mstmetent.blogspot.com/feeds/posts/default?alt=rss" sbcl)
+		  ;; ("https://asahilinux.org/blog/index.xml" asahilinux)
+		  ))
 
   ;; Entries older than 2 weeks are marked as read
-  (add-hook 'elfeed-new-entry-hook
-			(elfeed-make-tagger :before "2 weeks ago"
-								:remove 'unread))
+  ;; (add-hook 'elfeed-new-entry-hook
+  ;; 			(elfeed-make-tagger :before "2 weeks ago"
+  ;; 								:remove 'unread))
 
   ;; https://emacstil.com/til/2021/10/31/bookmark-star-feeds-in-elfeed/
   ;; face for starred articles
@@ -789,22 +838,50 @@ With two PREFIX arguments, write out the day and month name."
 	'((t :foreground "#f77"))
 	"Marks a starred Elfeed entry.")
 
-  (add-to-list 'elfeed-search-face-alist '(star elfeed-search-star-title-face))
-
   (defalias 'elfeed-toggle-star
 	(elfeed-expose #'elfeed-search-toggle-all 'star))
 
-  (define-keys elfeed-search-mode-map
-	 "m" 'elfeed-toggle-star
-	 "u" (elfeed-expose #'elfeed-search-toggle-all 'unread)
-	 "U" 'elfeed-update-feed)
+  (setq elfeed-show-mode-hook
+		(list (lambda ()
+				(setq-local
+				 fill-column 90
+				 line-spacing 4
+				 shr-max-width (- fill-column 5)
+				 visual-fill-column-extra-text-width '(-3 . 0))
+				(visual-fill-column-mode 1)))
+		elfeed-search-remain-on-entry t
+		;; This makes elfeed-show buffer stay in same window!
+		elfeed-show-entry-delete 'quit-window)
+  (add-to-list 'elfeed-search-face-alist
+			   '(star elfeed-search-star-title-face))
+
+  (util:define-keys elfeed-show-mode-map
+	"h" 'backward-char
+	"j" 'next-line
+	"k" 'previous-line
+	"l" 'forward-char
+	"q" 'quit-window)
+
+  (util:define-keys elfeed-search-mode-map
+	"S" 'elfeed-search-set-filter
+	"s" (lambda () (interactive)
+		  (let ((p (point)))
+			(unwind-protect
+				(call-interactively 'elfeed-search-live-filter)
+			  (goto-char p))))
+	"f" (elfeed-expose #'elfeed-search-toggle-all 'fav)
+	"m" 'elfeed-toggle-star				; was not bind
+	"u" (elfeed-expose #'elfeed-search-toggle-all 'unread)
+	"U" 'elfeed-update-feed)
 
   (add-hook 'elfeed-search-mode-hook
 			(defun elfeed-search-mode-setup ()
+			  ;; better readability
 			  (setq-local line-spacing 5)))
   :init (global-set-key [?\C-x ?w] 'elfeed))
 
 (use-package guitar-tab
+  :disabled
   :init
   (defun guitar-tab-auto-fill ()
 	;; (org-table-get-field)

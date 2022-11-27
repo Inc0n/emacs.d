@@ -1,20 +1,22 @@
 ;; -*- coding: utf-8; lexical-binding: t; -*-
 
 ;;; Commentary:
-;; Like "init-misc.el", the difference is this file is always loaded
+;; Contains essential configuration, should be load before anything
+;; else.
 
 ;;; Code:
 
 ;;; Set up $PATH and needs to be run first
-(use-package exec-path-from-shell
-  :ensure t
+(use-package exec-path-from-shell :ensure t
   :init
   (when (memq window-system '(mac ns x))
 	(setq exec-path-from-shell-variables
-	  '("PATH" "MANPATH"
-		"SSH_AUTH_SOCK" "SSH_AGENT_PID"
-		;; "GPG_AGENT_INFO"
-		"LIBRARY_PATH"))
+		  '("PATH" "MANPATH"
+			"SSH_AUTH_SOCK" "SSH_AGENT_PID"
+			"GUILE_LOAD_COMPILED_PATH"
+			"GUILE_LOAD_PATH"
+			;; "GPG_AGENT_INFO"
+			"LIBRARY_PATH"))
 	(exec-path-from-shell-initialize)))
 
 ;; reply y/n instead of yes/no
@@ -34,16 +36,8 @@
 ;; For example
 ;; - "English" and 'utf-16-le
 ;; - "Chinese-GBK" and 'gbk
-(set-language-environment "UTF-8")
+(set-language-environment "English")
 (prefer-coding-system 'utf-8)
-
-;; default-process-coding-system
-;; (setq read-quoted-char-radix 10)
-;; (setq locale-coding-system 'utf-8)
-;; (set-terminal-coding-system 'utf-8)
-;; (set-keyboard-coding-system 'utf-8)
-;; (set-selection-coding-system 'utf-8)
-
 ;; }}
 
 ;; {{ narrow region
@@ -116,7 +110,7 @@ widen content."
 		 mac-right-option-modifier 'none)
    ;; (lookup-key global-map [magnify-up])
    ;; mac-magnify-text-scale-or-overview-tab-group
-   (define-keys global-map
+   (util:define-keys global-map
 	 ;; disable turn on and off fullscreen
 	 [S-magnify-up] 'ignore
 	 [S-magnify-down] 'ignore
@@ -128,15 +122,128 @@ widen content."
      ;; prevent mark (selection) save to kill-ring
      (setq select-enable-primary nil))))
 
+(require-package 'magit)
+
 ;; Key fixes
 ;; @see https://emacs.stackexchange.com/questions/20240/how-to-distinguish-c-m-from-return
 (when (display-graphic-p)
-  (define-keys input-decode-map
+  (defun util:swap-chars (c1 c2 &optional unbind)
+	(define-key input-decode-map c1 (and (not unbind) c2))
+	(define-key input-decode-map c2 (and (not unbind) c1)))
+  ;; (util:swap-chars "9" "(" t)
+  ;; (util:swap-chars "8" "*" t)
+  (util:define-keys input-decode-map
 	;; [?\C-i] [C-i]           ; let C-i be C-i instead of TAB
-	;; actually let's use this one in place of evil-escape
-	;; [?\C-\[] nil                      ; let C-[ be C-[ instead of ESC
-	[?\C-m] [C-m]						; let C-m be C-m instead of RET
+	;; [?\C-m] nil						  ; let ?\C-m is RET
+	;; kbd C-[ is ECS, map it to C-g
 	[?\C-\[] [C-\[]))
+
+(with-eval-after-load 'quail
+  ;; (pop quail-keyboard-layout-alist)
+  (add-to-list 'quail-keyboard-layout-alist
+			   (cons "colemak"
+					 (concat "                              "
+							 "§±1!2@3£4$5%6^7&8*9(0)-_=+    "
+							 "  qQwWfFpPgGjJlLuUyY;:[{]}    "
+							 "  aArRsStTdDhHnNeEiIoO'\"\\|    "
+							 "`~zZxXcCvVbBkKmM,<.>/?        "
+							 "                              ")))
+
+  ;; Mac keyboard
+  ;; §±  1!  2@  3£  4$  5%  6^  7&  8*  9( 0)  -_  =+
+  ;;  qQ  wW  fF  pP  gG  jJ  lL  uU  yY  ;:  [{  ]}
+  ;;   aA  rR  sS  tT  dD  hH  nN  eE  iI  oO  '"  \|
+  ;; `~ zZ  xX  cC  vV  bB  kK  mM  ,<  .> /?
+
+  (quail-define-package
+   "Colemak" "English" "Colemak" t
+   "English ASCII Input simulating Colemak")
+
+  (quail-define-rules
+   ;; First Row, numeric, same as qwerty.
+   ;; ("1" ?!) ("2" ?[) ("3" ?{) ("4" ?}) ("5" ?\() ("6" ?=) ("7" ?*)
+   ;; ("8" ?\)) ("9" ?+) ("0" ?\]) ("-" ?!) ("=" ?#) ("`" ?$)
+
+   ;; ("!" ?%) ("@" ?7) ("#" ?5) ("$" ?3) ("%" ?1) ("^" ?9) ("&" ?0)
+   ;; ("*" ?2) ("(" ?4) (")" ?6) ("_" ?8) ("+" ?`) ("~" ?~)
+
+   ;; Second Row
+   ;; ("q" ?q)
+   ;; ("w" ?w)
+   ("e" ?f)
+   ("r" ?p)
+   ("t" ?g)
+   ("y" ?j)
+   ("u" ?l)
+   ("i" ?u)
+   ("o" ?y)
+   ("p" ?\;)
+   ;; ("[" ?\[)
+   ;; ("]" ?\])
+
+   ;; ("Q" ?Q)
+   ;; ("W" ?W)
+   ("E" ?F)
+   ("R" ?P)
+   ("T" ?G)
+   ("Y" ?J)
+   ("U" ?L)
+   ("I" ?U)
+   ("O" ?Y)
+   ("P" ?:)
+   ;; ("{" ?\{)
+   ;; ("}" ?\})
+
+   ;; Home Row
+   ;; ("a" ?a)
+   ("s" ?r)
+   ("d" ?s)
+   ("f" ?t)
+   ("g" ?d)
+   ("h" ?h)
+   ("j" ?n)
+   ("k" ?e)
+   ("l" ?i)
+   (";" ?o)
+   ;; ("'" ?\')
+   ;; ("\\" ?\\)
+
+   ;; ("A" ?A)
+   ("S" ?R)
+   ("D" ?S)
+   ("F" ?T)
+   ("G" ?D)
+   ("H" ?H)
+   ("J" ?N)
+   ("K" ?E)
+   ("L" ?I)
+   (":" ?O)
+   ;; ("\"" ?\")
+   ;; ("|" ?|)
+
+   ;; Bottom Row
+   ;; ("z" ?z)
+   ;; ("x" ?x)
+   ;; ("c" ?c)
+   ;; ("v" ?v)
+   ;; ("b" ?b)
+   ("n" ?k)
+   ;; ("m" ?m)
+   ;; ("," ?,)
+   ;; ("." ?.)
+   ;; ("/" ?/)
+
+   ;; ("Z" ?Z)
+   ;; ("X" ?X)
+   ;; ("C" ?C)
+   ;; ("V" ?V)
+   ;; ("B" ?B)
+   ("N" ?K)
+   ;; ("M" ?M)
+   ;; ("<" ?<)
+   ;; (">" ?>)
+   ;; ("?" ?\?)
+   ))
 
 (define-key global-map [C-\[] [?\C-g])
 
@@ -182,7 +289,28 @@ widen content."
 (setq select-enable-clipboard t  ;; if t might cause sway to crash?
       select-enable-primary t)
 
-(use-package tramp :config
+(defun buffer-too-big-p ()
+  "If buffer is more than 3000 lines, each line >= 60 bytes."
+  (cl-destructuring-bind (line longest-line-len mean-line-len)
+	  (buffer-line-statistics)
+	(if (and (boundp 'so-long-target-modes)
+			 (apply 'derived-mode-p so-long-target-modes))
+		(> longest-line-len so-long-threshold)
+	  (if (derived-mode-p 'text-mode)
+		  (and (> line 3000)
+			   (> mean-line-len 60))
+		(error "Buffer mode (%s) is not supported" major-mode)))))
+
+;; files, very very long line counter-measurement
+(use-package so-long
+  :defer t
+  :config
+  (setq so-long-predicate 'buffer-too-big-p) ; was so-long-statistics-excessive-p
+  :init (add-hook 'emacs-startup-hook #'global-so-long-mode))
+
+(use-package tramp
+  :defer t
+  :config
   ;; to ignore 'Remote file error: Forbidden reentrant call of Tramp'
   ;; (setq debug-ignored-errors
   ;;       (cons 'remote-file-error debug-ignored-errors))
@@ -205,50 +333,50 @@ widen content."
 
 ;; Undo
 ;; Store more undo history to prevent loss of data
-(setq undo-limit 8000000
+(setq undo-limit 800000
       undo-no-redo t
-      undo-strong-limit 8000000
-      undo-outer-limit 8000000)
+      undo-strong-limit 800000
+      undo-outer-limit 800000)
 
-;; default is 60, way too small
-(setq kill-ring-max 100)
+(setq kill-ring-max 100)				; default is 60
 
 (use-package undohist :ensure t
   :defer t
-  :init
+  :commands (undohist-save-safe undohist-recover-safe)
+  :config
   (setq undohist-ignored-files '(".epub$"))
-  (autoload 'undohist-initialize "undohist")
-  (undohist-initialize))
+  ;; (undohist-initialize) does the following:
+  (when (not (file-directory-p undohist-directory))
+    (make-directory undohist-directory t))
+  :init
+  (add-hook 'before-save-hook #'undohist-save-safe)
+  (add-hook 'find-file-hook #'undohist-recover-safe))
 
 ;; Visual undo
-(use-package vundo
-  ;; :ensure t
-  :straight (vundo :type git :host github :repo "casouri/vundo")
+(use-package vundo :ensure t
   :defer t
+  :commands (vundo)
   :config
   (setq vundo-compact-display nil	; Take less on-screen space.
 		;; vundo-unicode-symbols
         vundo-glyph-alist vundo-ascii-symbols)
 
   ;; Use `HJKL` VIM-like motion, also C-a/C-e to jump around.
-  (define-keys vundo-mode-map
+  (util:define-keys vundo-mode-map
     "l" #'vundo-forward
     "h" #'vundo-backward
     "j" #'vundo-next
     "k" #'vundo-previous
     [?\C-a] #'vundo-stem-root
     [?\C-e] #'vundo-stem-end
-    ;; "q" #'vundo-quit
-    ;; [?\C-g] #'vundo-quit
-    [return] #'vundo-confirm)
-  :init (autoload 'vundo "vundo"))
+    [return] #'vundo-confirm))
 
 ;; winner undo/redo
 (add-hook 'emacs-startup-hook #'winner-mode)
+(setq winner-dont-bind-my-keys t)
 (with-eval-after-load 'winner
   ;; I don't need that many records
   (setq winner-ring-size 64))
-(setq winner-dont-bind-my-keys nil)
 
 ;; uniquify
 ;; Nicer naming of buffers for files with identical names

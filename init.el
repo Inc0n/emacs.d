@@ -8,7 +8,7 @@
 ;;; Code:
 
 ;; Produce backtraces when errors occur
-(setq debug-on-error t)
+(setq debug-on-error nil)
 
 ;;----------------------------------------------------------------------------
 ;; Adjust garbage collection thresholds during startup, and thereafter
@@ -17,16 +17,16 @@
 (setq garbage-collection-messages t) ; for debug
 (setq gc-cons-percentage 0.5)
 ;; setting the initial gc-cons-threshold to a large value to prevent lots of GC
-(setq gc-cons-threshold (* 64 1024 1024)) ;; 64mb
+(setq gc-cons-threshold (* 128 1024 1024)) ;; 128mb
 
-(defvar my/normal-gc-cons-threshold (* 48 1024 1024)) ;; 32mb
+(defvar my/normal-gc-cons-threshold (* 24 1024 1024))
 
 (add-hook 'emacs-startup-hook
           (lambda ()
-			(set-face-attribute 'default nil :height 130)
+			(set-face-attribute 'default nil :height 140)
             ;; reset the gc-cons-threshold back to a smaller value
             (setq gc-cons-threshold my/normal-gc-cons-threshold)
-            (setq gc-cons-percentage 0.1)
+            (setq gc-cons-percentage 0.3)
             (message "startup time: %s, gcs-done=%d"
                      (emacs-init-time) gcs-done)
 			(setq custom-file (my/emacs-d "custom.el"))
@@ -48,9 +48,9 @@
 
 ;; @see https://www.reddit.com/r/emacs/comments/3kqt6e/2_easy_little_known_steps_to_speed_up_emacs_start/
 ;; Normally file-name-handler-alist is set to
-;; (("\\`/[^/]*\\'" . tramp-completion-file-name-handler)
-;; ("\\`/[^/|:][^/|]*:" . tramp-file-name-handler)
-;; ("\\`/:" . file-name-non-special))
+;; '(("\\`/[^/]*\\'" . tramp-completion-file-name-handler)
+;;   ("\\`/[^/|:][^/|]*:" . tramp-file-name-handler)
+;;   ("\\`/:" . file-name-non-special))
 ;; Which means on every .el and .elc file loaded during start up, it has to runs those regexps against the filename.
 
 (add-to-list 'load-path (my/emacs-d "lisp"))
@@ -62,24 +62,20 @@
   (require 'init-utils)
   (require 'init-essential)
   (require 'init-file-type)
-  ;; Any file use flyspell should be initialized after init-spelling.el
+  ;; Any file use flyspell should be initialized after
+  ;; init-spelling.el
   (require 'init-spelling)
   (require 'init-ibuffer)
   (require 'init-completing)
-  ;; (require 'init-yasnippet)
-  ;; (require 'init-company)
 
-  (require 'init-chinese) ;; cannot be idle-required
-  (require 'init-keyfreq) ;; need statistics of keyfreq asap
-  ;; projectile costs 7% startup time
+  (require 'init-chinese)
+  (require 'init-keyfreq)
 
   (require 'init-ui)
   (require 'init-writting)
   (require 'init-misc)
   (require 'init-dired)
-  ;; (require 'init-evil)
   (require 'init-bindings)
-  ;; (require 'init-meow)
   (require 'init-repeat)
   ;; ediff configuration should be last so it can override
   ;; the key bindings in previous configuration
@@ -96,7 +92,6 @@
   (require 'init-git)
   (require 'init-shell)
   (require 'init-browse)
-  ;; (require 'init-tags)
 
   ;; @see https://github.com/hlissner/doom-emacs/wiki/FAQ
   ;; Adding directories under "site-lisp/" to `load-path' slows
@@ -113,4 +108,3 @@
 (put 'erase-buffer 'disabled t)
 (put 'list-timers 'disabled nil)
 (put 'list-threads 'disabled nil)
-

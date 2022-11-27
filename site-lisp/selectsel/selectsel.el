@@ -201,75 +201,10 @@ Obeys narrowing.  Can have INITIAL-INPUT"
 (autoload 'grep-expand-template "grep" "")
 (autoload 'counsel--elisp-to-pcre "counsel" "")
 
-(defun selectsel--rg-preprocess-candidates (cands)
-  (mapcar (lambda (c)
-	    (if (not (string-match "\\`\\([^:]+\\):\\([^:]+\\):\\(.*\\)" c))
-		c
-	      (let ((file-name (match-string 1 c))
-		    (line-num (match-string 2 c))
-		    (match (match-string 3 c)))
-		(add-face-text-property ;; file name
-		 0 (length file-name)
-		 'compilation-info
-		 nil file-name)
-		(add-face-text-property ;; line number
-		 0 (length line-num)
-		 '(:underline nil :inherit compilation-line-number)
-		 nil line-num)
-		(propertize match
-			    'selectrum-candidate-display-prefix
-			    (concat file-name ":" line-num ":")))))
-          cands))
-
-(defun selectsel-rg (&optional initial-input)
-  "My selectrum interface to rg, takes on INITIAL-INPUT."
-  (interactive (list (util/thing-at-point)))
-  (let* ((command selectrum-rg-base-cmd)
-	 (selectrum-preprocess-candidates-function
-          'selectsel--rg-preprocess-candidates)
-	 (cands (lambda (in)
-		  (if (< (length in) 3)
-		      '("Input should more than 3 characters.")
-		    (let* ((counsel--regex-look-around "--pcre2")
-			   (regex
-			    (counsel--elisp-to-pcre in counsel--regex-look-around)))
-		      ;; (mapcar prop)
-		      (split-string (shell-command-to-string
-				     (grep-expand-template command regex))
-				    "\n")))))
-	 (cand (selectrum--read "rg: " cands
-				:initial-input initial-input
-				;; :may-modify-candidates t
-				:history 'selectsel--rg-history
-				:require-match nil))
-	 (file-n-line (get-text-property 0 'selectrum-candidate-display-prefix cand)))
-    (when (and file-n-line
-               (string-match "\\`\\(.*?\\):\\([0-9]+\\):\\'" file-n-line))
-      (let ((file-name (match-string-no-properties 1 file-n-line))
-	    (line-number (match-string-no-properties 2 file-n-line))
-	    (input selectrum--last-input))
-        ;; TODO: open in already opened buffer instead of current buffer
-	(find-file file-name)
-	(goto-char (point-min)) ;; reset to line 1
-	(forward-line (1- (string-to-number line-number)))
-	(selectsel--yank-search input)))))
-
 ;; selectrum-ffip
 
 (defvar selectsel-search-file-max-depth 3
   "The maximum depth `selectrum-search-file-list' will reach into, default is 3.")
-
-(defun selectsel--ffip-project-root ()
-  "Return project root or `default-directory'."
-  (if-let ((project-root
-	    ;; (cond ((listp ffip-project-file))
-	    ;; 		(t (locate-dominating-file default-directory
-	    ;; 								 ffip-project-file)))
-	    (cl-some (apply-partially #'locate-dominating-file
-                                      default-directory)
-		     ffip-project-file)))
-      (file-name-as-directory project-root)
-    default-directory))
 
 (defun selectsel--dir-tree-list (root-path)
   "Generate a list of files recursively starting from ROOT-PATH
@@ -296,7 +231,7 @@ as deep as `selectrum--search-file-max-depth'"
 (defun selectsel-ffip ()
   "Find a file in project."
   (interactive)
-  (let* ((collection (selectsel--dir-tree-list (selectsel--ffip-project-root)))
+  (let* ((collection (selectsel--dir-tree-list (project-root (project-current))))
 		 (cand (completing-read "Search files:" collection)))
     (when cand
       (find-file cand))))
@@ -368,54 +303,9 @@ as deep as `selectrum--search-file-max-depth'"
      nil
      'selectsel--M-x-history))
    'record))
-
-(defun selectsel--preprocess-files (cands)
-  "Selectsel created hashed table coloured mode.
-Argument CANDS list of files to process."
-  (mapcar (lambda (d)
-	    (if (directory-name-p d)
-		(propertize d 'face 'font-lock-keyword-face)
-	      d))
-	  (sort cands
-		(lambda (x y)
-		  (cond ((eq (directory-name-p x)
-			     (directory-name-p y))
-			 (string< x y))
-			(t (directory-name-p x)))))))
-
-(defun selectsel-find-file ()
-  (interactive)
-  (let ((selectrum-preprocess-candidates-function 'selectsel--preprocess-files)
-        (selectrum-max-window-height 15)) ;; display more files
-    (selectrum-read-file-name "File file: ")))
 ;;
 
 ;; quick repeat
-
-(defvar selectsel-quick-navigate-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map "n" [?\C-n])
-    (define-key map "p" [?\C-p])
-    (define-key map "q" #'abort-recursive-edit)
-    map))
-
-(defun selectsel-quick-repeat ()
-  "Quick navigation variant of `selectrum-repeat'."
-  (interactive)
-  (let ((selectrum-minibuffer-map selectsel-quick-navigate-map)
-        (minibuffer-message-timeout 0.3))
-    (minibuffer-message "quick navigate n/p/q")
-    (selectrum-repeat)))
-
-(defun selectsel-choice-read (choices)
-  "Quick CHOICES that should be a list of symbols."
-  (set-keymap-parent selectsel-quick-navigate-map vertico-map)
-  (let ((vertico-map selectsel-quick-navigate-map))
-    ;; selectrum-minibuffer-map
-    (intern
-     (completing-read
-      "Choose: "
-      (mapcar #'symbol-name choices)))))
 
 (defun selectrum-org-headlines-candidates (&optional scope)
   "See `org-map-entries' for the definition of SCOPE."

@@ -21,66 +21,28 @@
   ;;  'variable-pitch-serif nil :family "STFangSong") ; "Merriweather"
   (setq mixed-pitch-set-height t))
 
-(setq text-scale-mode-step 1.1)
-;; (text-scale-set 0)
-
-(setq-default fill-column 75			; my fonts are bigger
-              visual-fill-column-center-text t
-              ;; Additional margin needed for Unicode text width
-              visual-fill-column-extra-text-width '(0 . -6))
-
 ;;; writeroom
 
 (use-package writeroom-mode :ensure t
   :config
-  (add-to-list/s 'writeroom--local-variables
-                 '(mixed-pitch-mode
-                   ;; org-indent-mode
-                   ;; org-adapt-indentation
-                   display-line-numbers-mode))
-  (setq writeroom-width 0.7
-        ;; writetoom-
+  (add-hook 'writeroom-local-effects
+			(defun writeroom-mode-local-setup (arg)
+			  ;; disable when writeroom mode on
+			  (tab-bar-mode (- arg))))
+
+  ;; (add-to-list 'writeroom--local-variables 'tab-bar-mode)
+  ;; (dolist (x '(mixed-pitch-mode
+  ;; 			   ;; org-indent-mode
+  ;; 			   ;; org-adapt-indentation
+  ;; 			   display-line-numbers-mode))
+  ;; 	(add-to-list 'writeroom--local-variables x))
+  (setq writeroom-width 60
         writeroom-window-maximized nil
         writeroom-fullscreen-effect 'maximized
         writeroom-extra-line-spacing nil
-        writeroom-mode-line t))
-
-(defun readroom-mode (&optional arg)
-  (interactive)
-  (let ((writeroom-width 0.5)
-	(writeroom-extra-line-spacing 5))
-    ;; (mixed-pitch-serif-mode 1)
-    (call-interactively 'writeroom-mode)))
+        writeroom-mode-line nil))
 
 ;; Small read room mode
-
-(define-minor-mode center-buffer-mode
-  "Minor mode to center the buffer within window.
-
-When called interactively, toggle
-`center-buffer-mode'.  With prefix ARG, enable
-`center-buffer-mode' if ARG is positive, otherwise
-disable it.
-
-When called from Lisp, enable `center-buffer-mode' if ARG is omitted,
-nil or positive.  If ARG is `toggle', toggle `center-buffer-mode'.
-Otherwise behave as if called interactively."
-  :init-value nil
-  ;; :keymap nil
-  ;; :lighter ""
-  :group 'center-buffer-room
-  :global nil
-  (if center-buffer-mode
-      (cl-flet ((resize-margin ()
-                  (let ((margin-size
-                         (/ (- (frame-width) fill-column) 2)))
-                    (message "margin-size: %d" margin-size)
-                    (if (> margin-size 0)
-			(set-window-margins (selected-window) margin-size margin-size)))))
-        (add-hook 'window-configuration-change-hook #'resize-margin 0 'local)
-        (resize-margin))
-    (remove-hook 'window-configuration-change-hook #'resize-margin 'local)
-    (set-window-margins (selected-window) nil)))
 
 (defun reading-experience-on ()
   (interactive)
@@ -163,29 +125,29 @@ If OP returns 'forward-line, to forward 1 line."
 Argument ARG add two space prefix to paragraph."
   (interactive (cons current-prefix-arg
                      (region-or-min-max-points)))
-  (let ((fill-column 75))
-    (operate-on-each-line
-     min max
-     (lambda ()
-       (if (eq (org-element-type (org-element-at-point))
-               'paragraph)
-           (progn
-             ;; (when arg)
-             (unless (looking-at "^[[:space:]]*　　")
-               (beginning-of-line-text)
-               (insert "　　"))
-             (fill-region-as-paragraph
-              (line-beginning-position)
-              (line-end-position)
-              'left)
-             'dont-forward)
-         'forward-line)))))
+  ;; (let ((fill-column 75)))
+  (operate-on-each-line
+   min max
+   (lambda ()
+     (if (eq (org-element-type (org-element-at-point))
+             'paragraph)
+         (progn
+           ;; (when arg)
+           (unless (looking-at "^[[:space:]]*　　")
+             (beginning-of-line-text)
+             (insert "　　"))
+           (fill-region-as-paragraph
+            (line-beginning-position)
+            (line-end-position)
+            'left)
+           'dont-forward)
+       'forward-line))))
 
 (defun unfill-chinese (min max)
   "Fill buffer line by line from MIN to MAX.
 Argument ARG add two space prefix to paragraph."
   (interactive (region-or-min-max-points))
-  (let ((fill-column 75)
+  (let (;; (fill-column 75)
         (pos nil))
     (operate-on-each-line
      min max
@@ -211,7 +173,7 @@ Only applies to `text-mode'."
         (space "?:[[:blank:]\n\r]*"))
     ;; We obviously don't want to do this in prog-mode.
     (when (and (derived-mode-p 'text-mode)
-               (or (looking-at (format f space rg))
+               (or (looking-at-p (format f space rg))
                    (looking-back (format f rg space))))
       (replace-match rp nil nil nil 1))))
 
@@ -224,9 +186,10 @@ extraneous space at beginning of line."
   (if (use-region-p)
       (call-interactively 'capitalize-region)
     ;; A single space at the start of a line:
-    (when (looking-at "^\\s-\\b")
-      ;; get rid of it!
-      (delete-char 1))
+	(just-one-space)
+    ;; (when (looking-at "^\\s-\\b")
+    ;;   ;; get rid of it!
+    ;;   (delete-char 1))
     (call-interactively 'subword-capitalize)))
 
 (defun endless/downcase ()
@@ -238,17 +201,11 @@ Also converts full stops to commas."
       (call-interactively 'downcase-region)
     (call-interactively 'subword-downcase)))
 
-(defun endless/upcase ()
-  "Upcase region or word."
-  (interactive)
-  (if (use-region-p)
-      (call-interactively 'upcase-region)
-    (call-interactively 'subword-upcase)))
-
 ;; these bindings are fine
 (global-set-key (kbd "M-c") 'capitalize-dwim)
 (global-set-key (kbd "M-l") 'endless/downcase)
-(global-set-key (kbd "M-u") 'endless/upcase)
+;; (global-set-key (kbd "M-u") 'upcase-dwim)
+(global-set-key [remap upcase-region] 'upcase-dwim)
 
 ;;; comments
 
