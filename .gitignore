@@ -32,6 +32,11 @@ straight/
 elfeed/
 elpy/
 yasnippet/
+
+history
+# eshell
+eshell/lastdir
+
 # emacs cache files
 .lsp-session*
 .session

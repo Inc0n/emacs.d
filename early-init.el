@@ -15,7 +15,10 @@
       `((tool-bar-lines . 0) 			; (tool-bar-mode -1)
         (menu-bar-lines . 1)			; (menu-bar-mode 1)
 		(horizontal-scroll-bar-mode . nil)
-		(vertical-bar-mode . nil)))
+		(vertical-bar-mode . nil)
+        (undecorated-round . t)			; Emacs 29+: disable title bar
+		))
+
 
 (setq use-file-dialog nil)
 (setq use-dialog-box nil)

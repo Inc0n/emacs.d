@@ -1,0 +1,4 @@
+alias l ls $*
+alias python python3 $*
+alias ff for i in ${eshell-flatten-list $*} {find-file $i}
+alias fn find-name-dired $1 $2

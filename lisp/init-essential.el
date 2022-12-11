@@ -283,6 +283,8 @@ widen content."
 (setq vc-make-backup-files nil)
 ;; }}
 
+;; (mouse-avoidance-mode 'none)		   ; no need mac osx hide mouse on timeout
+
 ;;; Use the system clipboard
 ;; @see https://www.emacswiki.org/emacs/CopyAndPaste
 ;; So `C-y' could paste from clipbord if you are NOT using emacs-nox

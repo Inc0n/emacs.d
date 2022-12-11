@@ -119,6 +119,12 @@ Show COMMAND images within eshell buffer")
 	   (eshell-buffered-print image-fpath)
 	   (eshell-flush)))))
 
+(use-package eshell-vterm :ensure t
+  :after eshell
+  :config
+  (eshell-vterm-mode)
+  (defalias 'eshell/v 'eshell-exec-visual))
+
 (with-eval-after-load 'term
   ;; utf8
   (defun my/term-use-utf8 ()

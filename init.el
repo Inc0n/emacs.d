@@ -8,7 +8,7 @@
 ;;; Code:
 
 ;; Produce backtraces when errors occur
-(setq debug-on-error nil)
+(setq debug-on-error t)
 
 ;;----------------------------------------------------------------------------
 ;; Adjust garbage collection thresholds during startup, and thereafter

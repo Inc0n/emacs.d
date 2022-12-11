@@ -33,8 +33,8 @@
   "Setup shared by all languages (java/groovy/c++ ...)."
   ;; give me NO newline automatically after electric expressions are entered
   (setq c-auto-newline nil)
-  (setq-local tab-width 2)				; make sure its
-  (setq-local c-basic-offset 2)
+  (setq-local tab-width 3)				; make sure its
+  (setq-local c-basic-offset 3)
 
   (eldoc-mode 1)
 
@@ -54,7 +54,8 @@
 (defun my/c-mode-setup ()
   "C/C++ only setup."
 
-  (setq c-basic-offset 2)
+  (setq-local c-basic-offset 3)
+
   (setq cc-search-directories
 		'("." "/usr/include" "/usr/local/include/*" "../*/include" "$WXWIN/include"))
 
@@ -66,6 +67,11 @@
   (add-to-list 'imenu-generic-expression '(nil "^DEFUN *(\"\\([a-zA-Z0-9-]+\\)" 1))
   ;; make a #define be left-aligned
   (setq c-electric-pound-behavior '(alignleft)))
+
+;; This is making scrolling slower
+(use-package highlight-indent-guides :ensure t
+  :commands (highlight-indent-guides-mode)
+  :init (setq highlight-indent-guides-method 'character))
 
 (use-package zig-mode :ensure t
   :commands (zig-mode)
@@ -81,7 +87,8 @@
   (util:define-keys nim-mode-map
 	[?\C-\M-a] 'nim-nav-backward-block
 	[?\C-\M-e] 'nim-nav-forward-block)
-  (defun nim-mode-setup () nil)
+  (defun nim-mode-setup ()
+	(nimsuggest-mode))
   (add-hook 'nim-mode-hook 'nim-mode-setup))
 
 (use-package tree-sitter :ensure t
@@ -105,9 +112,9 @@
 	"Get the text node at point, to each major mode grammar."
 	(car					; get first valid match
 	 (seq-some (lambda (type)
-		 (tree-sitter-node-at-point type))
-		   (alist-get major-mode tree-sitter-text-grammar-alist
-			  tree-sitter-default-text-grammar))))
+		         (tree-sitter-node-at-point type))
+		       (alist-get major-mode tree-sitter-text-grammar-alist
+			              tree-sitter-default-text-grammar))))
 
   (defun run-ispell-at-point ()
 	"Run Ispell on text node at point if found."
@@ -116,6 +123,17 @@
 	  (ispell-region
 	   (tsc-node-start-position node)
 	   (tsc-node-end-position node)))))
+
+(defun tsc-forward-node ()
+  (interactive)
+  (let* ((this (treesit-node-at (point)))
+         (sib (treesit-node-next-sibling this)))
+    (let ((beg (treesit-node-start node))
+          (end (treesit-node-end node)))
+      (pulse-momentary-highlight-region
+       beg end
+       'secondary-selection)
+      (goto-char (treesit-node-start sib)))))
 
 (use-package tree-sitter-langs :ensure t
   :defer t
@@ -303,6 +321,23 @@ This function can be re-used by other major modes after compilation."
 (with-eval-after-load 'prog-mode
   (define-key prog-mode-map [?\M-o] 'avy-goto-subword-1))
 
+
+(with-eval-after-load 'xref
+  (setq xref-show-definitions-function #'xref-show-definitions-completing-read)
+  (setq xref-search-program 'ripgrep))
+
+(use-package dumb-jump :ensure t
+  :defer t
+  :init
+  ;; enable the xref backend
+  (add-hook 'xref-backend-functions #'dumb-jump-xref-activate 90)
+  ;; xref use completing-read to select a target
+  :config
+  (setq dumb-jump-prefer-searcher 'rg
+		dumb-jump-default-project "../")
+  (setq dumb-jump-rg-search-args "--no-require-git"))
+
+
 (add-auto-mode 'octave-maybe-mode "\\.m$")
 (util:define-hook-setup 'octave-mode-hook
   "Set up of `octave-mode'."
@@ -328,19 +363,34 @@ This function can be re-used by other major modes after compilation."
 ;; (autoload 'gradle-mode "gradle-mode")
 
 (use-package julia-mode :defer t :ensure t
-  :config (setq julia-indent-offset 3))
+  :config (setq julia-indent-offset 3
+				julia-arguments '("-i" "--color=no")
+				julia-prompt-regexp "julia>")
+
+  ;; (setq inf-julia-kept-output nil)
+  ;; (ansi-color-apply (car inf-julia-kept-output))
+
+  (when nil
+	(defvar inf-julia-kept-output nil)
+	(let* ((buf (get-buffer "*inferior-cling*"))
+		   (process (get-buffer-process buf)))
+	  ;; (set-process-filter process
+	  ;; 					  (lambda (process output)
+	  ;; 						(push output inf-julia-kept-output)))
+	  ;; (comint-send-string process "123\n")
+	  ;; (process-plist process)
+	  (with-current-buffer buf)
+	  ;; (comint-redirect-send-command-to-process
+	  ;;  "123"
+	  ;;  (get-buffer-create "*inf-output*")
+	  ;;  process
+	  ;;  nil
+	  ;;  :nodisplay)
+	  ))
+  ;; (inf-julia-send-string-and-output "1")
+  )
 
 (use-package lua-mode :defer t :ensure t)
-
-;; @see http://lua-users.org/wiki/LuaStyleGuide
-;; (util:define-hook-setup 'lua-mode-hook
-;;   "Set up lua script."
-;;   (unless (buffer-file-temp-p)
-;;     (setq-local imenu-generic-expression
-;;                 '(("Variable" "^ *\\([a-zA-Z0-9_.]+\\) *= *{ *[^ ]*$" 1)
-;;                   ("Function" "function +\\([^ (]+\\).*$" 1)
-;;                   ("Module" "^ *module +\\([^ ]+\\) *$" 1)
-;;                   ("Variable" "^ *local +\\([^ ]+\\).*$" 1)))))
 
 (use-package go-mode :ensure t :defer t)
 
@@ -552,13 +602,8 @@ using e.g. my/skewer-load-file."
 
 ;; js-mode imenu enhancement
 
-(defun my/common-js-setup ()
-  (local-require 'js-comint)
-  (subword-mode 1))
-
 (util:define-hook-setup 'js-mode-hook :mo
   (unless (derived-mode-p 'js2-mode)
-	(my/common-js-setup)
 	(setq imenu-generic-expression js-common-imenu-regex-list)))
 
 (with-eval-after-load 'js-mode
@@ -587,7 +632,6 @@ using e.g. my/skewer-load-file."
    js2-bounce-indent-p t)
   (setq-default js2-additional-externs '())
   (util:define-hook-setup 'js2-mode-hook
-	(my/common-js-setup)
 	;; if use node.js we need nice output
 	(js2-imenu-extras-mode)
 	(skewer-mode)

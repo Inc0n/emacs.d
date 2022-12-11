@@ -12,6 +12,12 @@
   :commands (flymake-hlint-load)
   :init (add-hook 'haskell-mode-hook 'flymake-hlint-load))
 
+(autoload 'org-babel-execute:haskell "~/.emacs.d/site-lisp/inf-haskell/ob-haskell.el")
+
+(use-package inf-haskell
+  :load-path "~/.emacs.d/site-lisp/inf-haskell/"
+  :commands (inf-haskell-minor-mode run-haskell))
+
 (defun haskell-interactive-toggle-print-mode ()
   (interactive)
   (setq haskell-interactive-mode-eval-mode
@@ -49,22 +55,13 @@
    haskell-interactive-mode-hide-multi-line-errors nil
    ;; haskell-interactive-types-for-show-ambiguous nil
    haskell-process-log nil
-   haskell-process-type 'auto ;; 'ghci
+   haskell-process-type 'cabal-repl
    haskell-process-suggest-remove-import-lines t
    haskell-svg-render-images t))
 
 ;; interactive Haskell
 ;; start the repl 'haskell-interactive-bring
 ;; load the file 'haskell-process-load-or-reload
-
-(use-package dante :ensure t
-  :after haskell-mode
-  :commands 'dante-mode
-  :init
-  ;; (remove-hook 'flymake-diagnostic-functions 'flymake-proc-legacy-flymake)
-  ;; Let's enable on need then, instead. It's not always used ...
-  ;; (add-hook 'haskell-mode-hook 'dante-mode)
-  )
 
 ;; @see http://haskell.github.io/haskell-mode/manual/latest/REPL.html#REPL
 ;; 'run-haskell

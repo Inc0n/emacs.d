@@ -185,8 +185,8 @@
      (eshell . t)
      (shell . t)
      (lisp . t)
-     (vterm-ob . t)
-     (gdb . t)
+     ;; (vterm-ob . t)
+     ;; (gdb . t)
      (calc . t)))
 
   ;; Add box around org-todo, to highlight different if background
@@ -470,7 +470,8 @@
 					  :box '(:line-width 1))
   (set-face-attribute 'org-modern-label nil :inherit '(fixed-pitch))
   (set-face-attribute 'org-modern-symbol nil :family "Iosevka Curly")
-  (setq org-modern-progress nil
+  (setq org-modern-tag nil
+        org-modern-progress nil
 		org-modern-footnote nil)		; its bad in table...
   ;; '(((underline t)
   ;; 	 (bold t))
@@ -481,8 +482,8 @@
 		org-modern-keyword nil		 ; "‣"
 		org-modern-list '((43 . "•") (45 . "–") (42 . "◦"))
         org-modern-star '("✸") ;; '("◉" "○" "◇" ?◈)
-		;; ""  ?⬘ ◉ ▣
-		org-modern-hide-stars nil))
+		;; ⬘ ◉ ▣
+		org-modern-hide-stars "."))
 
 (use-package org-appear :ensure t
   :commands (org-appear-mode)
@@ -536,8 +537,6 @@ Or its TODO state is not \"NEXT\"."
   (and (null (org-entry-get nil "ACTIVATED"))
 	   (save-excursion (org-end-of-subtree t))))
 
-;; (util:define-hook-setup org-tab-first-hook :indent (org-indent-line))
-
 (defun org-goto-visible-element (arg)
   "Move cursor to the previous visible item or heading.
 ARG will repeat the operation ARG number of times.
@@ -556,10 +555,10 @@ It will operate between the region from START to END."
   (when (y-or-n-p "Latex export current buffer to pdf first? ")
     (org-latex-export-to-pdf))
   (message "Word Count Estimate: \n\tLines\tWords\tCharacters\n%s"
-	   (s-trim-right
-	    (shell-command-to-string
-	     (format "pdftotext %s /dev/stdout | wc"
-		     (org-export-output-file-name ".pdf"))))))
+	       (s-trim-right
+	        (shell-command-to-string
+	         (format "pdftotext %s /dev/stdout | wc"
+		             (org-export-output-file-name ".pdf"))))))
 
 (with-eval-after-load 'ox-odt
   (setq org-odt-preferred-output-format "docx"))
@@ -698,168 +697,7 @@ It will operate between the region from START to END."
   (org-cite-insert-processor 'citar)
   (org-cite-follow-processor 'citar)
   (org-cite-activate-processor 'citar)
-  :bind
-  (:map org-mode-map :package org ("C-c b" . #'org-cite-insert)))
-
-(use-package ob-vterm-ob
-  :init
-  (defvar ob-vterm-default-instance 0
-    "Use existing vterm instance when no session parameter specified.")
-
-  (defun org-babel-vterm-initiate-session (&optional session _params)
-    "Initiate a session named session according to params."
-    (if-let* ((session
-			   (if (and session
-						(not (string= session "none")))
-				   (concat "vterm-" session)
-				 (or ob-vterm-default-instance
-					 (user-error "Specify a session name for ob-vterm"))
-				 (format "%s<%d>" vterm-buffer-name ob-vterm-default-instance)))
-			  (buf (get-buffer session))
-			  (alive (vterm-check-proc buf)))
-		buf
-      (let ((buf (generate-new-buffer session))
-			(setup (cdr (assq :setup _params))))
-		(save-window-excursion
-		  (with-current-buffer buf
-			(vterm-mode)
-			(when-let ((plist
-						(cdr (assoc setup ob-vterm-setup-alist))))
-			  (vterm-send-string
-			   (or (cl-getf plist :cmd)
-				   (user-error "cmd is not defined for %s"
-							   setup)))
-			  (setq-local vterm-use-vterm-prompt-detection-method nil
-						  term-prompt-regexp
-						  (or (cl-getf plist :prompt-regexp)
-							  (user-error "prompt regexp is not defined for %s"
-										  setup))))
-			buf)))))
-
-  (defun org-babel-execute:vterm-ob (body params)
-    (let ((session (org-babel-vterm-initiate-session
-					(cdr (assq :session params))))
-		  (full-body body))
-      (org-babel-vterm-evaluate session full-body params)))
-
-  (defvar ob-vterm-setup-alist
-    '((gdb :cmd "lima\ngdb\n" :prompt-regexp "gef>")
-      (termux :cmd "ssh android\n" :prompt-regexp "")))
-
-  (defun ob-vterm-evaluate-string (cmd &optional results-param)
-    ;; (vterm-send-C-p)
-    ;; (vterm-send-C-n)
-    ;; (vterm-send-C-a)
-    (vterm-reset-cursor-point)
-    (vterm-beginning-of-line)
-    (vterm-send-C-k)
-    (let ((start (point)))
-      (vterm-send-string cmd)
-      (vterm-send-string "\n")
-      (if (string= results-param "none")
-		  ""
-		(while (not (= (point)
-					   (save-excursion
-						 (vterm-next-prompt 1)
-						 (point)))
-					;; (save-excursion
-					;;   (goto-char start)
-					;;   (not (re-search-forward
-					;; 	  "ob-vterm-end"
-					;; 	  nil t)))
-					)
-		  (accept-process-output vterm--process vterm-timer-delay))
-		(let* ((end (save-excursion
-					  (vterm-next-prompt 1)
-					  (search-backward "\n" nil t))))
-		  (buffer-substring
-		   (save-excursion
-			 (goto-char start)
-			 (search-forward "\n" nil t))
-		   end)))))
-
-  (defun org-babel-vterm-evaluate (session body &optional params stdin cmdline)
-    (let* ((capture-all (cdr (assq :capture params)))
-		   (capture-all (member capture-all '("t" "yes")))
-		   (results-param (cdr (assq :results params))))
-      (save-match-data
-		(with-current-buffer session
-		  ;; this will goto and clear prompt
-		  ;; (vterm-send-C-l)
-		  (let ((results
-				 (mapcar (lambda (cmd) (ob-vterm-evaluate-string cmd results-param))
-						 (split-string body "\n"))))
-			(if capture-all
-				(mapconcat 'identity results "\n")
-			  (car (last results 1))))))))
-  (defalias 'vterm-ob-mode 'sh-mode)
-  (provide 'ob-vterm-ob))
-
-(use-package ob-gdb
-  :init
-  (defun org-babel-gdb-initiate-session (&optional session _params)
-    "initiate a session named session according to params."
-    (when (and session (not (string= session "none")))
-      (save-window-excursion
-	(or (org-babel-comint-buffer-livep (format "*gud-%s*" session))
-	    (progn
-	      ;; (shell session)
-	      (gud-gdb (format "gdb --fullname %s" session))
-	      (let ((process (get-buffer-process (current-buffer))))
-		;; (comint-send-string process "gdb\n")
-		(setq-local comint-prompt-regexp "gef➤  ")
-		(while (save-excursion
-			 (goto-char comint-last-input-end)
-			 (not (re-search-forward
-			       comint-prompt-regexp
-			       nil t)))
-		  (accept-process-output process)))
-	      ;; needed for Emacs 23 since the marker is initially
-	      ;; undefined and the filter functions try to use it without
-	      ;; checking.
-	      (set-marker comint-last-output-start (point))
-	      (get-buffer (current-buffer)))))))
-
-  (defun org-babel-execute:gdb (body params)
-    (let ((session (org-babel-gdb-initiate-session
-		    (cdr (assq :session params))))
-	  (full-body
-	   (org-babel-expand-body:generic
-	    body params (org-babel-variable-assignments:shell params))))
-      (org-babel-gdb-evaluate session full-body params)))
-
-  (defun org-babel-gdb-evaluate (session body &optional params stdin cmdline)
-    "Pass BODY to the Shell process in BUFFER.
-If RESULT-TYPE equals `output' then return a list of the outputs
-of the statements in BODY, if RESULT-TYPE equals `value' then
-return the value of the last statement in BODY."
-    (org-babel-comint-in-buffer session
-      (let ((beg comint-last-input-start)
-	    (output-start comint-last-input-end)
-	    (ansi-color-for-comint-mode t) ; disable to preserve color sequence
-	    (comint-prompt-regexp "gef➤  "))
-	(end-of-buffer)			; goto comint prompt
-	(comint-kill-input)		; clear all current input
-	(dolist (line (split-string (org-trim body) "\n"))
-	  (insert line)
-	  (comint-send-input nil t)
-
-	  (while (save-excursion
-		   (goto-char comint-last-input-end)
-		   (not (re-search-forward
-			 comint-prompt-regexp
-			 nil t)))
-	    (accept-process-output
-	     (get-buffer-process (current-buffer)))))
-	(let ((inhibit-read-only t))
-	  (prog1 (buffer-substring-no-properties
-		  ;; delete-and-extract-region
-		  output-start
-		  (1- (marker-position (car comint-last-prompt))))
-	    ;; (ansi-color-apply-on-region
-	    ;;  beg (buffer-end 1))
-	    )))))
-  (provide 'ob-gdb))
+  :bind (:map org-mode-map :package org ("C-c b" . #'org-cite-insert)))
 
 ;; (use-package ob-rescript
 ;;   :init

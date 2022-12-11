@@ -58,14 +58,17 @@
 	(flymake-mode 1)
 	(flymake-proselint-setup)
 	(flymake-languagetool-load)
-	(add-to-list 'flymake-languagetool-disabled-rules "WHITESPACE_RULE")
+    (when (boundp 'flymake-languagetool-disabled-rules)
+	  ;; org latex export takes care of repeated whitspace
+      (add-to-list 'flymake-languagetool-disabled-rules
+				   "WHITESPACE_RULE"))
     (puni-mode 1)
 	(setq-local fill-column 100)
 	(visual-fill-column-mode 1)
 	;; (text-scale-set 1.4)
 	(buffer-face-set 'variable-pitch)	; fixed-pitch-serif
 	;; (variable-pitch-mode 1)			; buffer-face-mode
-	(face-remap-add-relative 'variable-pitch  :height 1.0)
+	(face-remap-add-relative 'fixed-pitch  :height 0.8)
 	))
 
 (with-eval-after-load 'faces
@@ -77,18 +80,21 @@
 					  :font "Iosevka Curly Slab" :height 1.0)
   ;; I stopped using serif fonts, because the spacing between words
   (set-face-attribute 'variable-pitch nil
-					  :height 1.15
+					  :height 190
+                      :weight 'regular
 					  :family
 					  ;; serif
 					  ;; "Dejavu Serif"
+                      "ETBembo"
 					  ;; "Literata"
 					  ;; "Bookerly"
-					  "PT Serif"
+					  ;; "PT Serif"
 					  ;; sans serif
 					  ;; "Libre Baskerville"
 					  ;; "Optima"
 					  ;; "SF Mono"
 					  ))
+
 (with-eval-after-load 'org-indent
   ;; (set-face-attribute 'org-hide nil :inherit 'variable-pitch)
   (set-face-attribute 'org-indent nil :inherit '(fixed-pitch-serif
@@ -135,7 +141,10 @@ markdown table.  Taken from http://stackoverflow.com/a/26297700."
 
 ;;; Latex
 
+;; Note: 11/27/22 I have been using org mode instead
+
 (require-package 'auctex)
+
 ;; 09/26/22 I want to control fill-column to respect custom layouts.
 ;; With '\\', I do not know how to make it happen though.
 ;; (setq fill-nobreak-predicate nil)

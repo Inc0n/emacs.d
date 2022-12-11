@@ -80,7 +80,6 @@
 	[?\M-s ?d] #'delete-pair
 	[?\M-\(] #'emacs-surround-wrap-sexp-with
 	[?\M-\[] #'emacs-surround-wrap-sexp-with
-	[?\M-\{] #'emacs-surround-wrap-sexp-with
 	[?\M-\"] (lambda () (interactive) (emacs-surround-insert "\""))))
 
 (defun move-line-up (start end n)

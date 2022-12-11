@@ -46,7 +46,7 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
 
   (add-to-list 'marginalia-annotator-registry
                '(command marginalia-annotate-command-maybe-mode))
-  :init (add-hook 'vertico-mode-hook 'marginalia-mode))
+  :init (add-hook 'minibuffer-mode-hook 'marginalia-mode))
 
 ;; Vertico seems to lag when dealing with a very long list
 ;; such as while in describe-functions
@@ -60,15 +60,10 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
   (setq vertico-resize nil)				; 'grow-only
   ;; C-prefix is better since C-n and C-p, better ergonomics
   (util:define-keys vertico-map
-    [?\C-o] nil
-	[?\M-o] #'embark-act				; embark intergration
+	[return] #'vertico-exit				; ensure, since we messed with icomplete
     [C-return] #'vertico-exit-input
 	[wheel-up] #'vertico-previous
-	[wheel-down] #'vertico-next)
-  :init
-  ;; First, minibuffer would have no
-  (with-eval-after-load 'minibuffer
-	(vertico-mode 1)))
+	[wheel-down] #'vertico-next))
 
 (use-package embark :ensure t
   :defer t
@@ -81,18 +76,39 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
         icomplete-show-matches-on-no-input t
         icomplete-hide-common-prefix nil
         icomplete-scroll t
-        completion-flex-nospace nil
-        completion-category-defaults nil
-        completion-ignore-case t
         read-buffer-completion-ignore-case t
         read-file-name-completion-ignore-case t)
+  (add-hook 'icomplete-mode-hook
+			(defun my/icomplete-mode-setup ()
+			  ;; update this value seems to fix,
+			  ;; padding error
+			  (setq marginalia-field-width 80)))
+  (util:define-keys minibuffer-local-map
+    ;; [?\C-o] nil
+	[?\M-o] #'embark-act				; embark integration
+	[return] #'exit-minibuffer
+    ;; [C-return] #'exit-minibuffer		; just take current input
+	[wheel-up] [?\C-p]
+	[wheel-down] [?\C-n]
+	)
   :init
   (setq icomplete-max-delay-chars 2
-		icomplete-delay-completions-threshold 9000
+		;; icomplete-delay-completions-threshold 400
 		icomplete-compute-delay 0.1))
 
-;; more at
-;; https://kristofferbalintona.me/posts/cape/
+;; First, minibuffer would have no
+(with-eval-after-load 'minibuffer
+  (vertico-mode 1)						; using icomplete/fido now
+  ;; this is the best combination? Otherwise, it slows down significantly
+  ;; Problem1: org roam cannot open other lisp buffers.
+  ;; Problem2: scrolling will be out of visibility
+  ;; (fido-vertical-mode 1)
+  ;; (fido-mode -1)
+  ;; (icomplete-mode 1)
+  ;; (icomplete-vertical-mode -1)			; fido-vertical over this
+  )
+
+;; Setup stolen from https://kristofferbalintona.me/posts/cape/
 (use-package cape :ensure t
   :defer t
   :init
@@ -133,13 +149,16 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
 				'consult-completion-in-region)
   (add-hook 'corfu-mode-hook
 			(lambda ()
+			  ;; reverts setting by corfu
 			  (kill-local-variable 'completion-in-region-function)))
+  (corfu-popupinfo-mode 1)				; corfu-popupinfo-toggle
+  (setq corfu-popupinfo-delay '(2.0 . 2.0))
+
   ;; No need for corfu-complete
   (util:define-keys corfu-map
 	[remap completion-at-point] nil
 	[remap next-line] nil				; #'corfu-next
 	[remap previous-line] nil			; #'corfu-previous
-	[?\M-d] #'corfu-doc-toggle
 	;; [?\M-p] #'corfu-doc-scroll-down
 	[?\M-p] #'corfu-previous
 	;; [?\M-n] #'corfu-doc-scroll-up
@@ -147,6 +166,7 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
 
   (setq corfu-auto-delay 0.15)
   (setq corfu-on-exact-match 'insert)
+
   ;; integrating corfu and various shell modes
   (with-eval-after-load 'eshell
 	;; prevent post tab character insertion in eshell
@@ -165,7 +185,6 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
 
   (advice-add #'corfu-insert :after #'corfu-send-shell)
   :init
-  (use-package corfu-doc :defer t :ensure t)
   ;; these need to set before activate corfu
   (setq corfu-auto t)
   (add-hook 'emacs-startup-hook 'global-corfu-mode))
@@ -210,13 +229,11 @@ Returns non-nil if an expansion was made and nil otherwise."
 		   (match-string (car match-info))
 		   (match-start (cdr match-info))
 		   (exact (assoc match-string collection)))
-      (if exact
-		  (progn
-			(delete-region match-start (point))
-			(tempo-insert-template (cdr exact) nil)
-			t)
-		nil)))
-  tempo-expand-if-complete)
+      (and exact
+		   (progn
+			 (delete-region match-start (point))
+			 (tempo-insert-template (cdr exact) nil)
+			 t)))))
 
 (use-package tempel :ensure t
   :defer t
@@ -287,28 +304,30 @@ Returns non-nil if an expansion was made and nil otherwise."
   ;; Setup completion at point
   (defun tempel-setup-capf ()
     ;; Add the Tempel Capf to `completion-at-point-functions'.
-    ;; `tempel-expand' only triggers on exact matches. Alternatively use
-    ;; `tempel-complete' if you want to see all matches, but then you
-    ;; should also configure `tempel-trigger-prefix', such that Tempel
-    ;; does not trigger too often when you don't expect it. NOTE: We add
-    ;; `tempel-expand' *before* the main programming mode Capf, such
-    ;; That it will be tried first.
+    ;; `tempel-expand' only triggers on exact matches. Alternatively
+    ;; use `tempel-complete' if you want to see all matches, but then
+    ;; you should also configure `tempel-trigger-prefix', such that
+    ;; Tempel does not trigger too often when you don't expect
+    ;; it. NOTE: We add `tempel-expand' *before* the main programming
+    ;; mode Capf, such That it will be tried first.
     (setq-local completion-at-point-functions
 				(cons #'tempel-expand completion-at-point-functions)))
   (add-hook 'prog-mode-hook 'tempel-setup-capf)
   (add-hook 'text-mode-hook 'tempel-setup-capf))
 
-(setq completion-cycle-threshold 3)
-
+;; Emacs 29 built in completion rocks?
 (when (version<= "29" emacs-version)
-  (setq completion-format 'one-column
-		completion-header-format nil
-		completino-max-height 20
-		completino-auto-select nil)
-  (define-keys minibuffer-mode-map
-	"" 'minibuffer-next-completion
-	"" 'minibuffer-previous-completion)
-  (define-keys completion-in-region-mode-map
+  (setq completions-format 'one-column
+		;; completions-header-format nil
+		completions-max-height 20
+		completion-auto-select nil)
+  (util:define-keys minibuffer-mode-map
+	"" 'next-line
+    ;; minibuffer-next-completion
+	"" 'previous-line
+    ;; minibuffer-previous-completion
+    )
+  (util:define-keys completion-in-region-mode-map
 	"" 'minibuffer-next-completion
 	"" 'minibuffer-previous-completion
 	(kbd "M-RET")
@@ -316,10 +335,6 @@ Returns non-nil if an expansion was made and nil otherwise."
 	  (with-minibuffer-completions-window
 	   (let ((completion-use-base-affixes nil))
 		 (choose-completion nil no-exit no-quit))))))
-
-(setq completion-styles '(orderless)
-      completion-category-defaults nil
-      completion-category-overrides '((file (styles partial-completion))))
 
 (autoload 'pyim-cregexp-build "pyim")
 (autoload 'pinyinlib-build-regexp-string "pinyinlib")
@@ -338,12 +353,24 @@ To avoid lag, it does not match if length is more than 2000."
           str)
 	  str)))
 
+(setq completion-cycle-threshold 3)
+
+(setq completion-styles '(orderless)
+      completion-category-defaults nil
+      completion-category-overrides '((file (styles partial-completion)))
+      completion-ignore-case t
+      completion-flex-nospace nil)
+
 (use-package orderless :ensure t
   :defer t
   :config
+  (setq completion-category-overrides '((files (styles orderless-pinyin))))
+  (orderless-define-completion-style orderless-pinyin
+    (orderless-matching-styles '(match-pinyin
+                                 orderless-literal
+                                 orderless-regexp)))
   (setq orderless-matching-styles
-        '(match-pinyin
-		  ;; orderless-flex
+        '(;; orderless-flex
 		  orderless-literal
           orderless-regexp)))
 
@@ -380,7 +407,8 @@ Use `orderless' for filtering by passing STRING, TABLE and PRED to
 ARG can be used to control the behaviour of `consult-ripgrep'
 A single `universal-argument' can disable preview.
 Two `universal-argument' to change read a different directory to ripgrep."
-  (interactive (list (if current-prefix-arg "" (util/thing-at-point/deselect))))
+  (interactive (list (if current-prefix-arg ""
+                       (util/thing-at-point/deselect))))
   (require 'consult)
   ;; (let ((default-directory default-directory))
   ;;   (when (consp arg)
@@ -423,15 +451,16 @@ Two `universal-argument' to change read a different directory to ripgrep."
   ;; TODO: 2022-01-04 this imenu command shows old imenu entries.
   (interactive)
   (let* ((imenu-auto-rescan t)
-         (imenu-generic-expression
-          `(("Comments"
-             ,(rx line-start
-                  (= 3 (eval comment-start))
+	 (regex (rx line-start
+                  (= 3 (syntax comment-start))
                   (or (optional " ")
                       ;; (regexp (format "[^%s]+" comment-start))
                       (not (syntax comment-start)))
                   (group (* anything))
-                  line-end)
+                  line-end))
+         (imenu-generic-expression
+          `(("Comments"
+             ,regex
              ;; (format "^;\\{3\\}\\([^%s]+.*\\)$" comment-start)
              1))))
     (consult-imenu)))

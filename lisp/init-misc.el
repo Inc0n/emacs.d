@@ -110,8 +110,11 @@
   (setq calc-symbolic-mode t
 		calc-angle-mode 'rad))
 
+;; Keep dumb, so processes in comint behaves properly
+(setq-default comint-terminfo-terminal 'dumb)
+
 (setq-default tab-width 4
-			  indent-tabs-mode nil)
+			  indent-tabs-mode t)
 (setq tab-always-indent 'complete)
 
 ;; potentially can be made into a minor mode that wraps the current
@@ -257,22 +260,6 @@
 			 (with-temp-buffer
 			   (org-insert-time-stamp nil)
 			   (buffer-string))))))
-
-(use-package dumb-jump :ensure t
-  :defer t
-  :init
-  ;; enable the xref backend
-  (add-hook 'xref-backend-functions #'dumb-jump-xref-activate 90)
-  ;; (remove-hook 'xref-backend-functions #'dumb-jump-xref-activate)
-  ;; xref use completing-read to select a target
-  ;; (setq xref-show-definitions-function #'selectrum-xref-quick-navigate)
-  :config
-  (setq dumb-jump-prefer-searcher 'rg
-		dumb-jump-default-project "../")
-  (setq dumb-jump-rg-search-args "--no-require-git"))
-
-(with-eval-after-load 'xref
-  (setq xref-search-program 'ripgrep))
 
 (use-package hideshow :ensure nil
   :defer t
