@@ -48,19 +48,21 @@ You still need modify `package-archives' in \"init-elpa.el\" to PERMANENTLY use 
       (message "cannot find package %s" pkg)))
 
 ;;; Bootstrap straight
-(defvar bootstrap-version)
-(defvar straight-use-package-by-default nil)
-(let ((bootstrap-file
-       (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
-      (bootstrap-version 5))
-  (unless (file-exists-p bootstrap-file)
-    (with-current-buffer
-        (url-retrieve-synchronously
-         "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
-         'silent 'inhibit-cookies)
-      (goto-char (point-max))
-      (eval-print-last-sexp)))
-  (load bootstrap-file nil 'nomessage))
+
+(when t
+  (defvar bootstrap-version)
+  (defvar straight-use-package-by-default nil)
+  (let ((bootstrap-file
+         (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
+        (bootstrap-version 5))
+    (unless (file-exists-p bootstrap-file)
+      (with-current-buffer
+          (url-retrieve-synchronously
+           "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
+           'silent 'inhibit-cookies)
+        (goto-char (point-max))
+        (eval-print-last-sexp)))
+    (load bootstrap-file nil 'nomessage)))
 
 ;; On-demand installation of packages
 (defun require-package (package &optional min-version no-refresh)

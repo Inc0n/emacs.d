@@ -18,7 +18,7 @@
 					 :preview-key '(:debounce 0.3 any)
 					 consult-ripgrep consult-git-grep
 					 consult-bookmark consult-recent-file consult-xref
-					 :preview-key (kbd "M-."))
+					 :preview-key "M-.")
   (setq consult-project-root-function
         (lambda ()
           (when-let (project (project-current))
@@ -60,14 +60,16 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
   (setq vertico-resize nil)				; 'grow-only
   ;; C-prefix is better since C-n and C-p, better ergonomics
   (util:define-keys vertico-map
+	[?\M-o] #'embark-act
 	[return] #'vertico-exit				; ensure, since we messed with icomplete
     [C-return] #'vertico-exit-input
 	[wheel-up] #'vertico-previous
 	[wheel-down] #'vertico-next))
 
 (use-package embark :ensure t
-  :defer t
-  :config (define-key embark-file-map "f" 'my/browse-file))
+  :commands (embark-act)
+  :config (define-key embark-file-map "f" 'my/browse-file)
+  :init (define-key minibuffer-local-map [?\M-o] #'embark-act))
 
 (use-package icomplete
   :disabled
@@ -85,7 +87,6 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
 			  (setq marginalia-field-width 80)))
   (util:define-keys minibuffer-local-map
     ;; [?\C-o] nil
-	[?\M-o] #'embark-act				; embark integration
 	[return] #'exit-minibuffer
     ;; [C-return] #'exit-minibuffer		; just take current input
 	[wheel-up] [?\C-p]

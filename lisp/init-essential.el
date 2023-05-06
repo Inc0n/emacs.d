@@ -122,8 +122,6 @@ widen content."
      ;; prevent mark (selection) save to kill-ring
      (setq select-enable-primary nil))))
 
-(require-package 'magit)
-
 ;; Key fixes
 ;; @see https://emacs.stackexchange.com/questions/20240/how-to-distinguish-c-m-from-return
 (when (display-graphic-p)

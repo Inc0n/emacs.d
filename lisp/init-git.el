@@ -1,39 +1,19 @@
-;; -*- coding: utf-8; lexical-binding: t; -*-
+;;; init-git --- -*- coding: utf-8; lexical-binding: t; -*-
+;;; Commentary:
 ;;; Code:
 
+(require-package 'magit)
 (with-eval-after-load 'magit
   ;; (define-key magit-mode-map [C-tab] 'nil)
   )
 
-;; ;; {{ Solution 1: disable all vc backends
-;; @see http://stackoverflow.com/questions/5748814/how-does-one-disable-vc-git-in-emacs
-;; (setq vc-handled-backends ())
-;; }}
-
-;; {{ Solution 2: if NO network mounted drive involved
+;; {{
 (setq vc-handled-backends '(Git SVN Hg))
 ;; @see https://www.reddit.com/r/emacs/comments/4c0mi3/the_biggest_performance_improvement_to_emacs_ive/
 ;; open files faster but you can't check if file is version
 ;; controlled. other VCS functionality still works.
-(remove-hook 'find-file-hooks #'vc-find-file-hook)
+(when nil (remove-hook 'find-file-hook #'vc-refresh-state))
 ;; }}
-
-;; ;; {{ Solution 3: setup `vc-handled-backends' per project
-;; (setq vc-handled-backends nil)
-;; (defun my-setup-develop-environment ()
-;;   "Default setup for project under vcs."
-;;   (interactive)
-;;   (cond
-;;     ((string-match-p (file-truename user-emacs-directory)
-;;                      (file-name-directory (buffer-file-name)))
-;;       (setq vc-handled-backends '(Git)))
-;;     (t
-;;       (setq vc-handled-backends nil))))
-;; (dolist (hook '(java-mode-hook emacs-lisp-mode-hook org-mode-hook
-;;                 js-mode-hook javascript-mode-hook web-mode-hook
-;;                 c++-mode-hook c-mode-hook))
-;;   (add-hook hook #'my-setup-develop-environment))
-;; ;; }}
 
 (defun my/git-commit-id ()
   "Select commit id from current branch."
@@ -60,15 +40,8 @@
                             ""
                             buffer-file-name))
 
-(defun git-checkout-current-file ()
-  "Git checkout current file."
-  (interactive)
-  (when (and (buffer-file-name)
-             (yes-or-no-p (format "Git checkout %s? "
-                                  (file-name-nondirectory (buffer-file-name)))))
-    (let ((filename (git-get-current-file-relative-path)))
-      (shell-command (concat "git checkout " filename))
-      (message "DONE! git checkout %s" filename))))
+;; git checkout <filename>
+;; git add <filename>
 
 (defvar git-commit-message-history nil)
 (defun git-commit-tracked ()
@@ -87,16 +60,6 @@
       (message "Tracked files is committed."))
      (t
       (message "Do nothing!")))))
-
-(defun git-add-current-file ()
-  "Git add file of current buffer."
-  (interactive)
-  (when buffer-file-name
-    (let* ((filename (git-get-current-file-relative-path))
-           (status (shell-command (concat "git add " filename))))
-      (if (= status 0)
-          (message "DONE! git add %s" filename)
-        (message "Failed! %s in a git repo?" filename)))))
 
 ;; {{
 (defun my/git-extract-based (target lines)

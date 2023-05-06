@@ -23,14 +23,14 @@ lisp-mode emacs-lisp-mode ;; Specify multiple modes
 
 lisp-mode
 
-(defpackage "(defpackage :"
+(defpackage "(defpackage "
   (p
    (concat
 	(file-name-nondirectory (directory-file-name (file-name-directory (buffer-file-name))))
 	"."
 	(file-name-nondirectory (file-name-sans-extension (buffer-file-name))))
    pkg)
-  n> "(:use :cl" p "))"
+  n> "(:use #:cl" p "))"
   n "(in-package :" (s pkg) ")"
   n)
 
@@ -39,17 +39,16 @@ lisp-mode
   (p (file-name-nondirectory (file-name-sans-extension (buffer-file-name))))
   n> ":version \"0.0.1\""
   n> ":license \"nil\""
-  n> ":author \"${2:name} <${3:email}>\""
-  n> ":maintainer \"$2 <$3>\""
+  n> ":author \"" (p "name" name) " <" (p "email" email) ">\""
+  n> ":maintainer \"" (s name) " <" (s email) ">\""
   n> ":description \"" p "\""
   n> ";; :homepage \"https://github.com/\""
   n> ";; :depends-on (#:" p ")"
-  n> ":components ((:file \"" p "\")"
-  n> "(:file \"package\")"
+  n> ":components ((:file \"package\")"
+  n> "(:file \"" p "\")"
   n> "(:module src"
   n> ":components"
-  n> "((:file \"vec3\")"
-  n> "(:file \"camera\" :depends-on (\"\")))"
+  n> "((:file \"vec3\" :depends-on (\"\")))"
   n> ":serial t)))")
 
 emacs-lisp-mode
@@ -122,6 +121,10 @@ c-mode :when (re-search-backward "^\\S-*$" (line-beginning-position) 'noerror)
      "\"")
 
 org-mode
+
+(notebook ":PROPERTIES:
+:header-args: :session " (p "work") " :eval never-export :exports results
+:END:")
 
 (title "#+title: " p n "#+author: Daniel Mendler" n "#+language: en" n n)
 (src "#+begin_src " p n> r> n> "#+end_src")
