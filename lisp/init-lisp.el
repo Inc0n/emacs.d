@@ -81,7 +81,7 @@
   ;; e.g. asking to remove slime on every lisp file opened.
   (require 'sly-autoloads)
 
-  (use-package sly-stepper
+  (use-package sly-stepper :disabled
 	:straight
 	(sly-stepeer :type git :host github
 				 :repo "joaotavora/sly-stepper"
@@ -185,8 +185,7 @@ Call `newline-and-indent' if there are imbalanced sexp after point"
   (add-hook 'racket-mode-hook 'racket-mode-setup)
 
   (util:define-keys racket-mode-map
-	[?\M-\[] (lambda () (interactive)
-			   (emacs-surround-insert "["))
+	;; [?\M-\[] 'emacs-surround-wrap-sexp-with
 	[?\C-\M-y] nil		; racket-insert-lambda
 	(kbd "C-x tab") nil
 	[remap eval-print-last-sexp] 'racket-eval-last-sexp)

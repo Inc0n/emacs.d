@@ -665,6 +665,7 @@ It will operate between the region from START to END."
        0 "%d"))
 
 (use-package org-roam :ensure t
+  :disabled
   :defer t
   :init
   (setq org-roam-v2-ack t) ;; acknowledge upgrade and remove warning at startup
@@ -675,6 +676,16 @@ It will operate between the region from START to END."
   (setq org-roam-directory (file-truename "~/sources/org/roam/"))
   (setq org-roam-db-location (concat org-roam-directory "org-roam.db"))
   (org-roam-setup))
+
+;; Use org roam migrate to denote scripts from
+;; https://github.com/bitspook/notes-migrator
+(use-package denote :ensure t
+  :defer t
+  :config
+  (setq denote-directory (file-truename "~/sources/org/denote/"))
+  :init
+  (global-set-key (kbd "C-c r i") 'denote-link-insert-link)
+  (global-set-key (kbd "C-c r c") 'denote-open-or-create))
 
 
 (with-eval-after-load 'oc
@@ -697,23 +708,8 @@ It will operate between the region from START to END."
   (org-cite-insert-processor 'citar)
   (org-cite-follow-processor 'citar)
   (org-cite-activate-processor 'citar)
-  :bind (:map org-mode-map :package org ("C-c b" . #'org-cite-insert)))
-
-;; (use-package ob-rescript
-;;   :init
-;;   (defun org-babel-execute:rescript (body params)
-;;     "Execute a block of rescript code with org-babel."
-;;     (let ((in-file (org-babel-temp-file "rescript" ".res"))
-;;           (verbose (or (cdr (assq :verbose params)) 0)))
-;;       (with-temp-file in-file
-;;         (insert body))
-;;       ;; TODO: separate out bsc and node
-;;       (org-babel-eval
-;;        (format "bsc %s | node"
-;;                ;; (when verbose "-v")
-;;                (org-babel-process-file-name in-file))
-;;        "")))
-;;   (provide 'ob-rescript))
+  :bind (:map org-mode-map :package org
+			  ("C-c b" . #'org-cite-insert)))
 
 (require-package 'org-present)
 (with-eval-after-load 'org-present

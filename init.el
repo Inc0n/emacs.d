@@ -23,7 +23,7 @@
 
 (add-hook 'emacs-startup-hook
           (lambda ()
-			(set-face-attribute 'default nil :height 140)
+			(set-face-attribute 'default nil :height 135)
             ;; reset the gc-cons-threshold back to a smaller value
             (setq gc-cons-threshold my/normal-gc-cons-threshold)
             (setq gc-cons-percentage 0.3)

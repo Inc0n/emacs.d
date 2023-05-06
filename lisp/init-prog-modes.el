@@ -347,7 +347,7 @@ This function can be re-used by other major modes after compilation."
   (setq-local comment-start "%"
 			  comment-add 0))
 
-(use-package odin-mode
+(use-package odin-mode :disabled
   :commands (odin-mode)
   :straight (odin-mode :type git :host github
 					   :repo "mattt-b/odin-mode"

@@ -1,42 +1,20 @@
+
 ;;; Commentary:
-;; 
+;;
 ;;; Code:
 
-(defvar yijing-wuxing-list
-  '("火" "土" "金" "水" "木"))
-
-(defun yijing-wuxing-relation (elm1 elm2)
-  (cond ((not (member elm1 yijing-wuxing-list))
-         (format "%s 非五行" elm1))
-        ((equal elm1 elm2) "同")
-        (t (let* ((elm1-rest (or (member elm1 yijing-wuxing-list)
-                                 yijing-wuxing-list))
-                  (elm2-rest (member elm2 elm1-rest)))
-             (cond ((eq (cdr elm1-rest) elm2-rest) "生")     ; 1 生 2
-                   ((equal (cddr elm1-rest) elm2-rest) "克") ; 1 克 2
-                   (t (concat "反"                           ; 只能是 反生 反克
-                              (yijing-wuxing-relation elm2 elm1))))))))
+(require 'calendar)
+(require 'cal-china)
+(require 'wuxing)
 
 (defvar yijing-ec-ten-gods-alist
-  '(("反生" "正印" "偏印")              ; 枭印
-    ("同"   "比肩" "劫财")              ; 比劫
-    ("生"   "伤官" "食神")              ; 食伤
-    ("反克" "正官" "七杀")              ; 杀官
-    ("克"   "正财" "偏财")              ; 才财
-    )
-  "关系 异 同.")
-
-(defun yijing-ec-gans->ten-gods (day other)
-  (let* ((pillar (list day other))
-         (elms (mapcar #'yijing-ec-gan-to-elm pillar))
-         (god-list (assoc (apply #'yijing-wuxing-relation elms)
-                          yijing-ec-ten-gods-alist))
-         (types (mapcar (lambda (x) (caddr (assoc x yijing-ec-天干-alist)))
-                        pillar)))
-    (list pillar elms)
-    (if (equal (car types) (cadr types))
-        (cl-third god-list)
-      (cl-second god-list))))
+  [("克我" "正官" "七杀")              ; 杀官
+   ("生我" "正印" "偏印")              ; 枭印
+   ("同我" "比肩" "劫财")              ; 比劫
+   ("我生" "伤官" "食神")              ; 食伤
+   ("我克" "正财" "偏财")              ; 才财
+   ]
+  "十神 关系 异性 同性.")
 
 (defvar yijing-ec-天干-alist
   '((?甲 "木" "阳")
@@ -49,22 +27,70 @@
     (?辛 "金" "阴")
     (?壬 "水" "阳")
     (?癸 "水" "阴"))
-  "天干 alist in (天干名 五行 阴阳).  Order is important.")
+  "天干 alist in (天干名 五行 阴阳).")
 
 (defvar yijing-ec-地支-alist
-  '((?子 "癸")
-    (?丑 "乙" "辛" "癸")
-    (?寅 "甲" "丙" "戊")
-    (?卯 "乙")
-    (?辰 "戊" "乙" "癸")
-    (?巳 "丙" "戊" "庚")
-    (?午 "丁" "己")
-    (?未 "己" "丁" "乙")
-    (?申 "庚" "壬" "戊")
-    (?酉 "辛")
-    (?戌 "戊" "辛" "丁")
-    (?亥 "壬" "甲"))
-  "藏天干，本气，中气，余气.  Order is important.")
+  '((?子 . "癸")
+    (?丑 . "乙辛癸")
+    (?寅 . "甲丙戊")
+    (?卯 . "乙")
+    (?辰 . "戊乙癸")
+    (?巳 . "丙戊庚")
+    (?午 . "丁己")
+    (?未 . "己丁乙")
+    (?申 . "庚壬戊")
+    (?酉 . "辛")
+    (?戌 . "戊辛丁")
+    (?亥 . "壬甲"))
+  "藏天干，本气，中气，余气.")
+
+(defvar yijing-ec-branch-cycle-list
+  (wuxing-make-cycle-list
+   (mapcar #'car yijing-ec-地支-alist)))
+
+(defvar yijing-ec-长生-cycle
+  (wuxing-make-cycle-list
+   '("长生" "沐浴" "冠带" "临官" "旺"
+     "衰" "病" "死" "墓" "绝"
+     "胎" "养")))
+
+(defvar yijing-ec-长生-starts
+  [(?甲 ?亥  1)
+   (?乙 ?午 -1)
+   (?丙 ?寅  1)
+   (?丁 ?酉 -1)
+   (?戊 ?寅  1)
+   (?己 ?酉 -1)
+   (?庚 ?巳  1)
+   (?辛 ?子 -1)
+   (?壬 ?申  1)
+   (?癸 ?卯 -1)])
+
+(defun yijing-ec-长生 (stem branch)
+  (pcase-let* ((stem-num (yijing-ec-stem-num stem))
+               (`(,_ ,start-branch ,dir)
+                (aref yijing-ec-长生-starts stem-num)))
+    (cl-loop for b in (member start-branch yijing-ec-branch-cycle-list)
+             for x in (if (< dir 0)
+                          (reverse yijing-ec-长生-cycle)
+                        yijing-ec-长生-cycle)
+             when (equal b branch)
+             return x)))
+
+;; (yijing-ec-长生 ?戊 ?卯)
+
+(defun yijing-ec-gans->ten-gods (day other)
+  (let* ((pillar (list day other))
+         (elms (mapcar #'yijing-ec-gan-to-5elm pillar))
+         (god-list (aref yijing-ec-ten-gods-alist
+                         (apply #'wuxing-relation elms)))
+         (types (mapcar (lambda (x) (caddr (assoc x yijing-ec-天干-alist)))
+                        pillar)))
+    ;; (list pillar elms)
+    (if (equal (car types)
+               (cadr types))
+        (cl-third god-list)
+      (cl-second god-list))))
 
 (defun yijing-ec-cycle-num (pillar)
   "计算甲子数 from PILLAR.
@@ -72,7 +98,7 @@
 怎么计算某一年的干支所表示的是一甲子中的第几年? - 黄亮anthony的回答 - 知乎
 https://www.zhihu.com/question/513623565/answer/2327090033."
   (let* ((stem
-          (yijing-ec-gan-num-from-pillar pillar))
+          (yijing-ec-stem-num (aref pillar 0)))
          (branch
           (cl-position (string (aref pillar 1))
                        calendar-chinese-terrestrial-branch :test #'string=))
@@ -82,12 +108,14 @@ https://www.zhihu.com/question/513623565/answer/2327090033."
                 (% (* 5 branch) 60)))))
     cycle))
 
-(defun yijing-ec-gan-num-from-pillar (pillar)
-  ;; (cl-position (string (seq-elt pillar 0)) calendar-chinese-celestial-stem :test #'string=)
-  (cl-position (seq-elt pillar 0) yijing-ec-天干-alist :key #'car))
+(defun yijing-ec-stem-num (stem)
+  (cl-position stem yijing-ec-天干-alist :key #'car))
 
-(defun yijing-ec-gan-to-elm (stem)
+(defun yijing-ec-gan-to-5elm (stem)
   (cadr (assoc stem yijing-ec-天干-alist)))
+
+(defun yijing-ec-zhi->hidden-gan (branch)
+  (cdr (assoc branch yijing-ec-地支-alist)))
 
 ;; 计算找到此旬之首，十二地支反推两位便是此旬空亡.
 (defun yijing-ec-empty (pillar)
@@ -107,15 +135,15 @@ https://www.zhihu.com/question/513623565/answer/2327090033."
           (+ remain branch)))
     (if (>= start 12)
         (setq start (% start 12)))
-    (s-join "" (subseq calendar-chinese-terrestrial-branch
-                       start (+ start 2)))))
+    (s-join "" (cl-subseq calendar-chinese-terrestrial-branch
+                          start (+ start 2)))))
 
 (defvar yijing-ec-纳音-alist
   '(("甲子乙丑" . "海中金") ("丙寅丁卯" . "炉中火") ("戊辰己巳" . "大林木")
     ("庚午辛未" . "路旁土") ("壬申癸酉" . "剑锋金")
     ("甲戌乙亥" . "山头火") ("丙子丁丑" . "漳下水") ("戊寅己卯" . "城头土")
     ("庚辰辛巳" . "白蜡金") ("壬午癸未" . "杨柳木")
-    ("甲申乙酉" . "泉中水") ("丙戌丁亥" . "屋上土") ("戊子己丑" . "霹雳火")
+    ("甲申乙酉" . "泉中水") ("丙戌丁亥" . "屋上土") ("戊己子己丑" . "霹雳火")
     ("庚寅辛卯" . "松柏木") ("壬辰癸巳" . "长流水")
     ("甲午乙未" . "砂石金") ("丙申丁酉" . "山下火") ("戊戌己亥" . "平地木")
     ("庚子辛丑" . "壁上土") ("壬寅癸卯" . "金箔金")
@@ -129,6 +157,51 @@ https://www.zhihu.com/question/513623565/answer/2327090033."
   (or (cdr (cl-assoc pillar yijing-ec-纳音-alist :test 's-contains?))
       (format "未知柱(%s)" pillar)))
 
+(defun yijing-ec-wuxing-score (pillars)
+  "Using PILLARS to compute 5elm score.
+Formula found: https://www.131.com.tw/word/b3_2_14.htm"
+  (let ((scores (make-hash-table :size 5
+                                 :test #'equal
+                                 ;; :data
+                                 ;; '(("金" . 0)
+                                 ;;         ("木" . 0)
+                                 ;;         ("水" . 0)
+                                 ;;         ("火" . 0)
+                                 ;;         ("土" . 0))
+                                 ))
+        (藏干-score  '((1 . (8))
+                       (2 . (3 5))
+                       (3 . (1 2 5)))))
+    (cl-flet ((plist-incf (plist prop x)
+                          (cl-incf
+                           (gethash prop plist 0)
+                           x)))
+      (cl-loop for pillar in pillars
+               for gan = (aref pillar 0)
+               for gan5 = (yijing-ec-gan-to-5elm gan)
+               for zhi = (aref pillar 1)
+               for gans = (yijing-ec-zhi->hidden-gan zhi)
+               do
+               (plist-incf scores gan5 5)
+               (message "%s " gan5)
+               (cl-loop for score in (cdr (assoc (length gans) 藏干-score))
+                        for gan in (cl-coerce gans 'list) ; string -> list
+                        for gan5 = (yijing-ec-gan-to-5elm gan)
+                        do
+                        (message "%c %s" gan gan5)
+                        (plist-incf scores
+                                    gan5
+                                    score)))
+      scores)))
+
+(defun yijing-ec-wuxing-health (pillars)
+  (cl-loop with ht = (yijing-ec-wuxing-score pillars)
+           for elm being the hash-keys of ht
+           using (hash-values score)
+           ;; collect (format "%s = %s" elm score)
+           append (list elm score)
+           ))
+
 (defun yijing-ec-排盘 (date hour min)
   "四柱 from DATE HOUR and MIN."
   (let* ((year (yijing-ec-year-pillar date))
@@ -137,22 +210,29 @@ https://www.zhihu.com/question/513623565/answer/2327090033."
          (hour (yijing-ec-hour-pillar date hour min))
          (four-pillars (list year month day hour))
 
-         (天干 (mapcar (lambda (x) (aref x 0)) four-pillars)))
+         (天干 (mapcar (lambda (x) (aref x 0)) four-pillars))
+         (地支 (mapcar (lambda (x) (aref x 1)) four-pillars)))
     `(hline
       ("四柱:" "年柱" "月柱" "日柱" "时柱")
-      ("十神:" ,@(mapcar (lambda (x) (yijing-ec-gans->ten-gods (aref day 0) x))
+      ("十神:" ,@(mapcar (lambda (x)
+                           (yijing-ec-gans->ten-gods (aref day 0) x))
                          天干))
       hline
       ("天干:" ,@(mapcar #'string 天干))
-      ("地支:" ,@(mapcar (lambda (x) (string (aref x 1))) four-pillars))
-      ("藏干:" ,@(mapcar (lambda (x) (cdr (assoc (aref x 1) yijing-ec-地支-alist)))
-                         four-pillars))
+      ("地支:" ,@(mapcar #'string 地支))
+      ("藏干:" ,@(mapcar #'yijing-ec-zhi->hidden-gan
+                         地支))
       ("纳音:" ,@(mapcar #'yijing-ec-pillar->yin four-pillars))
+      ("长生" ,@(mapcar (lambda (branch)
+                          (yijing-ec-长生 (aref day 0) branch))
+                        地支))
+      ("运" "TODO")
       ("空亡:" ,@(mapcar #'yijing-ec-empty four-pillars))
       ("神煞:" "TODO")
       hline
       ("天干留意:" "TODO")
       ("地支留意:" "TODO")
+      ;; ("五行注意:" ,(yijing-ec-wuxing-health four-pillars))
       hline
       ("称骨重量:" "TODO")
       ("称骨评语:" "TODO")
@@ -189,16 +269,74 @@ https://www.zhihu.com/question/513623565/answer/2327090033."
           (yijing-ec-day-pillar date)
           (yijing-ec-hour-pillar date hour min)))
 
-(defun yijing-from-gregorian (date)
-  (let* ((cn-date (calendar-chinese-from-absolute
-                   (calendar-absolute-from-gregorian date)))
-         (cn-year  (cadr   cn-date))
-         (cn-month (cl-caddr  cn-date))
-         (cn-day   (cl-cadddr cn-date)))
-    (list cn-month cn-day cn-year)))
+(defun yijing-ec-get-enclosing-solar-terms (date)
+  "Return the two enclosing solar terms for DATE."
+  (let ((year (calendar-extract-year date))
+        (absolute-date (calendar-absolute-from-gregorian date)))
+    (cal-china-x-sync-solar-term year)
+    (cl-loop
+     with last = nil
+     for i in cal-china-x-solar-term-alist
+     until (>= absolute-date
+              (calendar-absolute-from-gregorian (car i)))
+     do (setq last i)
+     finally return (list i last))))
 
+(defun yijing-solar-terms-of-month (date)
+  "Return the two solar terms for this DATE.
+Only month and year is used, i.e. day is unused."
+  (let ((year (calendar-extract-year date))
+        (month (calendar-extract-month date)))
+    (cal-china-x-sync-solar-term year)
+    (cl-loop with last = nil
+             for alist on cal-china-x-solar-term-alist by #'cddr
+             for i = (car alist)
+             for ((i-month _day _year) . _节气) = i
+             until (= month i-month)
+             do (setq last i)
+             finally return (list i (cadr alist)))))
 
 ;; 四柱算法
+
+(defun yijing-convert-date (gregorian-date)
+  "把 `格里高利历' GREGORIAN-DATE 换算成 更符合天干地支的计算."
+  (pcase-let ((`(,month ,day ,year) gregorian-date)
+              (`(,end ,start)
+               (yijing-solar-terms-of-month gregorian-date)))
+    (when (< (calendar-absolute-from-gregorian gregorian-date)
+             (calendar-absolute-from-gregorian (car start)))
+      ;; when month is rolled back, the days a treated as
+      ;; continuation of previous month
+      (cl-incf day
+               (- (calendar-absolute-from-gregorian
+                   (list month 1 year))
+                  (calendar-absolute-from-gregorian
+                   (list (1- month) 1 year))))
+      (cl-decf month 1))
+    ;; when year is rolled back, month increased by 12.  this
+    ;; means jan and some days of feb are treated as the 11th and
+    ;; 12th month of last year.
+    (cl-case month
+      (1
+       (cl-decf year)
+       (cl-incf month 12))
+      (2
+       (when (and
+              (string= (cdr start) "立春")
+              (< (calendar-absolute-from-gregorian gregorian-date)
+                 (calendar-absolute-from-gregorian (car start))))
+         (cl-decf year)
+         (cl-incf month 12))))
+    (list month day year)))
+
+(defun calendar-chinese-sexagesimal-name (n)
+  "The N-th name of the Chinese sexagesimal cycle.
+N congruent to 1 gives the first name, N congruent to 2 gives the second name,
+..., N congruent to 60 gives the sixtieth name."
+  ;; Having - in between Chinese characters is weird.
+  (format "%s%s"
+          (aref calendar-chinese-celestial-stem (% (1- n) 10))
+          (aref calendar-chinese-terrestrial-branch (% (1- n) 12))))
 
 (defun yijing-ec-year-pillar (date)
   "年柱 from DATE."
@@ -208,20 +346,28 @@ https://www.zhihu.com/question/513623565/answer/2327090033."
     (calendar-chinese-sexagesimal-name cn-year)))
 
 (defun yijing-ec-month-pillar (date)
-  "月柱 from DATE."
-  (let* ((cn-date (calendar-chinese-from-absolute
-                   (calendar-absolute-from-gregorian date)))
-         (cn-year  (cadr cn-date))
-         (stem-base (% (% (1- cn-year) 10)
-                       5))
-         (cn-month (cl-caddr  cn-date))
-         ;; (cn-day   (cl-cadddr cn-date))
-         )
+  "月柱 from DATE.  年上起月法."
+  (let ((cn-month (car date)))
+    ;; (calendar-chinese-sexagesimal-name
+    ;;  (+ 2 cn-month (* stem-base 12)))
     (calendar-chinese-sexagesimal-name
-     (+ 2 cn-month (* stem-base 12)))))
+     (+
+      (cdr
+       (cl-assoc (aref (yijing-ec-year-pillar date) 0)
+                 '(("甲己" . 3)        ; 丙寅
+                   ("乙庚" . 15)       ; 戊寅
+                   ("丙辛" . 27)       ; 庚寅
+                   ("丁壬" . 39)       ; 壬寅
+                   ("戊癸" . 51)       ; 甲寅
+                   )
+                 :test (lambda (x xs)
+                         (cl-position x xs :test #'char-equal))))
+      ;; offset ?
+      (- cn-month 2)))))
 
 (defun yijing-ec-day-pillar (date)
   "日柱，返回干支纪日 from DATE.
+月基数修改自 高氏日柱公式第三版。
 公式第三版来自: https://zhuanlan.zhihu.com/p/93508430."
   (let* ((cn-month (car      date))
          (cn-day   (cadr     date))
@@ -229,7 +375,6 @@ https://www.zhihu.com/question/513623565/answer/2327090033."
 
          (s (% cn-year 100))
          (quarter-s (floor s 4))
-         (u (% s 4))
          (m
           ;; 1,2 map to 13, 14, the rest remains the same
           ;; (+ 2 (caddr
@@ -238,49 +383,55 @@ https://www.zhihu.com/question/513623565/answer/2327090033."
           (if (<= cn-month 2)
               (+ cn-month 12)
             cn-month))
-         (d cn-day)
-
-         (C (1+ (floor cn-year 100)))
-         (X (+ (* 44 (1- C))
-               (floor (1- C) 4)
-               9)))
+         (d cn-day))
     (calendar-chinese-sexagesimal-name
-     (% (+ (* 6 quarter-s)
-           (* 5 (+ u (* 3 quarter-s)))
-           (+ (* 30 (/ (1+ (expt -1 m)) 2))
-              (floor (- (* 3 m) 7) 5))
-           d
-           (% X 60))
-        60))))
+     (+ (* (1- cn-year) 5)
+        (/ (1- cn-year) 4)
+        (+ (* 30 (/ (1+ (expt -1 m))
+                    2))
+           (floor (- (* 3 m) 7) 5)
+           ;; weird padder I found
+           (if (<= cn-month 2)
+               -6
+             -1))
+        d)
+     ;; (% (+ (* 6 quarter-s)
+     ;;       (* 5 (+ (* 3 quarter-s) (% s 4)))
+     ;;       ;; 月基数运算
+     ;;       (+ (* 30 (/ (1+ (expt -1 m))
+     ;;                   2))
+     ;;          (floor (- (* 3 m) 7) 5))
+     ;;       d
+     ;;       (% X 60))
+     ;;    60)
+     )))
 
 (defun yijing-ec-hour-pillar (date hour min)
-  "时柱 from DATE HOUR and MIN."
-  (let* ((cn-day (yijing-ec-gan-num-from-pillar
-                  (yijing-ec-day-pillar date)))
-         (day-stem-base
-          (* (% cn-day 5) 2)))
-    (calendar-chinese-sexagesimal-name
-     (+ 1 ;; offset
-        (* 6 day-stem-base)
-        (/ hour 2)))))
-
-;; (defun cal-china-x-chinese-date-string (date)
-;;   (let* ((cn-date (calendar-chinese-from-absolute
-;;                    (calendar-absolute-from-gregorian date)))
-;;          (cn-year  (cadr   cn-date))
-;;          (cn-month (cl-caddr  cn-date))
-;;          (cn-day   (cl-cadddr cn-date)))
-;;     (format "%s%s年%s%s%s%s(%s)"
-;;             (calendar-chinese-sexagesimal-name cn-year)
-;;             (aref cal-china-x-zodiac-name (% (1- cn-year) 12))
-;;             (aref cal-china-x-month-name (1-  (floor cn-month)))
-;;             (if (integerp cn-month) "" "(闰月)")
-;;             (aref cal-china-x-day-name (1- cn-day))
-;;             (cal-china-x-get-solar-term date)
-;;             (cal-china-x-get-horoscope (car date) (cadr date)))))
+  "时柱 from DATE HOUR and MIN.
+五鼠遁口诀:
+甲己还加甲, 乙庚丙作初.
+丙辛从戊起, 丁壬庚子居.
+戊癸何方发, 壬子是真途."
+  (calendar-chinese-sexagesimal-name
+   (+
+    (cdr
+     (cl-assoc (aref (yijing-ec-day-pillar date)
+                     0)
+               '(("甲己" . 1)        ; 甲子
+                 ("乙庚" . 13)       ; 丙子
+                 ("丙辛" . 25)       ; 戊子
+                 ("丁壬" . 37)       ; 庚子
+                 ("戊癸" . 49)       ; 壬子
+                 )
+               :test (lambda (x xs)
+                       (cl-position x xs :test #'char-equal))))
+    ;; TODO 需要换算时刻.  TODO Nth day 23 hours is actually
+    ;; the next day, this is not accounted yet. This need to be
+    ;; fixed in day-pillar.
+    (floor hour 2))))
 
 ;; test
-(defun yijing-ec-test ()
+(when nil
   (cl-loop for (args expected) in
            '((((3 26 2018) 8 30)
               "戊戌年 乙卯月 丁巳日 甲辰时")

@@ -16,6 +16,8 @@
   :ensure nil
   :init (add-hook 'after-init-hook 'history-mode))
 
+(require-package 'goto-last-change)
+
 (defun my/remind (keybind func-name &optional no-error)
   "Remind to use KEYBIND to invoke this FUNC-NAME."
   (when (and (null (key-binding keybind))
@@ -41,7 +43,7 @@
 
 (use-package emacs-surround :ensure nil
   :load-path "~/.emacs.d/site-lisp/"
-  :commands (emacs-surround emacs-surround-insert)
+  :commands (emacs-surround emacs-surround-insert emacs-surround-change-at-point)
   :config (add-to-list 'emacs-surround-alist '("<" . ("<" . ">")))
   :init
   (defun emacs-surround-sexp-at-point ()
@@ -101,7 +103,6 @@
 
 (util:define-keys leader-keymap
   "ar" #'align-regexp
-  "aw" #'avy-goto-word-or-subword-1
   "am" #'apply-macro-to-region-lines
 
   "f" #'next-buffer
@@ -118,7 +119,6 @@
   "di" #'dictionary-lookup
   "dd" #'sdcv-search-input				; details
   "dt" #'sdcv-search-input+				; summary
-  "dm" #'man
 
   "ct" #'copy-this-buffer-and-file
   "dt" #'delete-this-buffer-and-file
@@ -135,17 +135,11 @@
   "ic" #'completing-imenu-comments
   "im" #'consult-mark
 
-  ;; NOTE: `avy-goto-word' can be replaced with an isearch
-  ;; implementation and `avy-goto-line' can be achieved with switching
-  ;; to relative line spacing, and read char twice
-  "j" #'avy-goto-line-below
-  "k" #'avy-goto-line-above
-
   "m" (lambda ()
 		(interactive)
 		(push-mark-command t)
 		(deactivate-mark))
-  "n" #'narrow-or-widen-dim
+  "nw" #'narrow-or-widen-dim
 
   "op" #'compile
   "on" (lambda (arg) (interactive "P") (org-agenda arg "n"))
@@ -208,7 +202,7 @@
 (global-unset-key [?\C-z])				; suspend-frame
 
 (with-eval-after-load 'mac-win
-  ;; emacs-mac port introduce some unnecessary binds., disable them!
+  ;; emacs-mac port introduce some unnecessary binds, disable them!
   (util:define-keys global-map
 	[C-wheel-up] 'ignore				; annoying scrolls
 	[C-wheel-down] 'ignore

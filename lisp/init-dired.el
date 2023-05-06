@@ -91,7 +91,6 @@ Now use dired-diff under the hood."
   ;; http://emacsredux.com/blog/2015/07/19/ace-jump-mode-is-dead-long-live-avy/
   ;; for more tips
   (util:define-keys dired-mode-map
-    ";" 'avy-goto-subword-1
     "e" 'my/ediff-files
     "h" [?^]                            ; was describe-mode
     "l" [return]                        ; was dired-do-redisplay

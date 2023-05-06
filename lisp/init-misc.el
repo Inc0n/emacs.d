@@ -56,7 +56,7 @@
 	(when (find-font (font-spec :name font))
 	  (set-face-attribute 'default nil
 						  :font font
-						  :height 140))))
+						  :height 135))))
 
 ;; (setq system-time-locale "C")
 (with-eval-after-load 'imenu
@@ -114,7 +114,8 @@
 (setq-default comint-terminfo-terminal 'dumb)
 
 (setq-default tab-width 4
-			  indent-tabs-mode t)
+              ;; tabs make it difficult to use git or diff
+			  indent-tabs-mode nil)
 (setq tab-always-indent 'complete)
 
 ;; potentially can be made into a minor mode that wraps the current
@@ -150,15 +151,12 @@
 ;; @see http://blog.binchen.org/posts/effective-code-navigation-for-web-development.html
 ;; don't let the cursor go into minibuffer prompt
 (setq minibuffer-prompt-properties '(read-only t face minibuffer-prompt)
-	   enable-recursive-minibuffers t)
-
-(require-package 'avy)
-(with-eval-after-load 'avy
-  (setq avy-style 'at-full))
+	  enable-recursive-minibuffers t)
 
 ;;;;
 ;; Font
 ;; https://www.gnu.org/software/emacs/manual/html_node/emacs/Fonts.html
+;;;
 (defun completing-read-fonts (font)
   "`completion-read' style FONT selection."
   (interactive
@@ -187,7 +185,7 @@
 					  "Cascadia Code")))))
   (set-face-attribute 'default nil :font font)
   ;; Update fixed-pitch
-  (set-face-attribute 'fixed-pitch nil :font font)
+  (set-face-attribute 'fixed-pitch nil :font font :height 1.0)
   ;; (set-face-attribute 'default nil :height 140 :family "Monospace")
   ;; (chinese/fix-font)
   (message "Font: %s" font))
@@ -202,12 +200,14 @@
   (defun my/isearch-at-point-maybe (arg)
 	"Enhanced `isearch', also respect `isearch-regexp'"
 	(interactive "P")
-	(cond ((equal '(4) arg)
-		   (isearch-forward-thing-at-point))
-		  (:else
-		   (save-excursion
-			 (goto-char (window-start))
-			 (isearch-forward isearch-regexp :non-recursive-edit)))))
+    ;; 01/11/23 Removed redundant code for forward thing at point
+	;; instead use M-s M-. instead
+    ;; (cond ((equal '(4) arg)
+	;;        (isearch-forward-thing-at-point))
+    ;;       (:else))
+	(save-excursion
+	  (goto-char (window-start))
+	  (isearch-forward isearch-regexp :non-recursive-edit)))
 
   (defun isearch-within-defun-cleanup ()
 	(widen)
