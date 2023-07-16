@@ -9,7 +9,8 @@
 ;; improves the word-wrapping for CJK text mixed with Latin text
 (customize-set-variable 'word-wrap-by-category t)
 
-(use-package flymake-proselint :straight t ; We need the latest changes
+(use-package flymake-proselint
+  ;; :straight t ; We need the latest changes
   :commands (flymake-proselint-setup)
   :config
   (setq flymake-proselint-disable '(typography.symbols.sentence_spacing)))
@@ -35,7 +36,7 @@
 
 (setq text-scale-mode-step 1.05) ;; (text-scale-set 0)
 
-(setq-default fill-column 95)			; my fonts are bigger
+(setq-default fill-column 65)			; my fonts are bigger
 
 (with-eval-after-load 'visual-fill-column
   (setq-default visual-fill-column-center-text t
@@ -54,10 +55,10 @@
   ;; keep text mode: Emms tag edit mode Monospace
   (when (derived-mode-p 'org-mode)
 	(make-local-variable 'flymake-languagetool-disabled-rules)
-	(writegood-mode 1)
+	;; (writegood-mode 1)
 	(flymake-mode 1)
 	(flymake-proselint-setup)
-	(flymake-languagetool-load)
+	;; (flymake-languagetool-load)
     (when (boundp 'flymake-languagetool-disabled-rules)
 	  ;; org latex export takes care of repeated whitspace
       (add-to-list 'flymake-languagetool-disabled-rules
@@ -72,20 +73,20 @@
 	))
 
 (with-eval-after-load 'faces
-  (set-face-attribute 'default nil :height 140)
-  (set-face-attribute 'default nil :font "JetBrains Mono-14")
-  (set-face-attribute 'fixed-pitch nil :font "Dejavu Sans Mono" :height 1.0)
+  (set-face-attribute 'default nil :font "JetBrains Mono-13")
+  (set-face-attribute 'default nil :font "Menlo-13")
+  ;; (set-face-attribute 'fixed-pitch nil :font "Dejavu Sans Mono" :height 1.0)
   ;; Curly is more easy to the eyes than ss02
-  (set-face-attribute 'fixed-pitch-serif nil
-					  :font "Iosevka Curly Slab" :height 1.0)
+  ;; (set-face-attribute 'fixed-pitch-serif nil :font "Fira Code" :height 1.0)
   ;; I stopped using serif fonts, because the spacing between words
   (set-face-attribute 'variable-pitch nil
-					  :height 190
+					  :height 180
                       :weight 'regular
 					  :family
 					  ;; serif
 					  ;; "Dejavu Serif"
-                      "ETBembo"
+					  "Linux Biolinum"
+                      ;; "ETBembo"
 					  ;; "Literata"
 					  ;; "Bookerly"
 					  ;; "PT Serif"
@@ -104,40 +105,26 @@
   :defer t
   :mode "\\.\\(m[k]d\\|markdown\\)\\'"
   :config
+  (setq markdown-hide-urls t)
   (util:define-hook-setup 'markdown-mode-hook
 	"Make markdown tables saner via `orgtbl-mode'.
 Insert org table and it will be automatically converted to
 markdown table.  Taken from http://stackoverflow.com/a/26297700."
-	(add-hook 'after-save-hook
-              (defun cleanup-org-tables ()
-				(save-excursion
-                  (goto-char (point-min))
-                  (while (search-forward "-+-" nil t) (replace-match "-|-"))))
-              nil :local)
+	;; (add-hook 'after-save-hook
+    ;;           (defun cleanup-org-tables ()
+	;; 			(save-excursion
+    ;;               (goto-char (point-min))
+    ;;               (while (search-forward "-+-" nil t) (replace-match "-|-"))))
+    ;;           nil :local)
 	(turn-on-auto-fill)
 	(when (boundp 'orgtbl-mode)
-	  (orgtbl-mode 1)) ; enable key bindings
+	  (orgtbl-mode 1))                  ; enable key bindings
 	;; don't wrap lines because there is table in `markdown-mode'
-	(setq truncate-lines nil)
-	(setq imenu-generic-expression '((nil "^#\\([# ]*[^#\n\r]+\\)" 1))))
+	(setq-local truncate-lines nil
+	            imenu-generic-expression '((nil "^#\\([# ]*[^#\n\r]+\\)" 1))))
   ;; `pandoc' is better than `markdown'
   (when (executable-find "pandoc")
-    (setq-default markdown-command "pandoc -f markdown"))
-  ;; deprecate in favor of ef-themes-heading
-  ;; (custom-set-faces
-  ;;  '(markdown-header-face-1
-  ;;    ((t :height 1.25 :weight extra-bold :inherit markdown-header-face)))
-  ;;  '(markdown-header-face-2
-  ;;    ((t :height 1.15 :weight bold :inherit markdown-header-face)))
-  ;;  '(markdown-header-face-3
-  ;;    ((t :height 1.08 :weight bold :inherit markdown-header-face)))
-  ;;  '(markdown-header-face-4
-  ;;    ((t :height 1.0 :weight bold :inherit markdown-header-face)))
-  ;;  '(markdown-header-face-5
-  ;;    ((t :height 0.9 :weight bold :inherit markdown-header-face)))
-  ;;  '(markdown-header-face-6
-  ;;    ((t :height 0.75 :weight extra-bold :inherit markdown-header-face))))
-  )
+    (setq-default markdown-command "pandoc -f markdown")))
 
 ;;; Latex
 
@@ -189,12 +176,6 @@ markdown table.  Taken from http://stackoverflow.com/a/26297700."
 (with-eval-after-load 'package
   (define-key package-menu-mode-map "l" [return]))
 
-;; pdf-tools, should be removed
-(with-eval-after-load 'pdf-view
-  (util:define-keys pdf-view-mode-map
-	"k" #'pdf-view-previous-line-or-previous-page
-	"j" #'pdf-view-next-line-or-next-page))
-
 (with-eval-after-load 'doc-view
   (util:define-keys doc-view-mode-map
 	"k" #'previous-line
@@ -244,4 +225,3 @@ markdown table.  Taken from http://stackoverflow.com/a/26297700."
 
 (provide 'init-text)
 ;;; init-text.el ends here
-

@@ -498,13 +498,13 @@ completion."
              (h0 (car s1))) ;; "<limit count> <all count> <unused string>"
         (save-match-data
 		  (unless (string-match
-                  (rx (group (+ digit))
-					  whitespace
-					  (group (+ digit))
-					  whitespace
-					  (group ?" (* nonl) ?"))
-                  h0)
-           (error "Invalid `:complete' response '%s'" h0))
+                   (rx (group (+ digit))
+					   whitespace
+					   (group (+ digit))
+					   whitespace
+					   (group ?\" (* nonl) ?\"))
+                   h0)
+            (error "Invalid `:complete' response '%s'" h0))
           (let ((cnt1 (match-string 1 h0))
 				(h1 (haskell-string-literal-decode (match-string 3 h0))))
 			(unless (= (string-to-number cnt1) (length cs))

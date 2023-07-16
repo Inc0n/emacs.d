@@ -70,13 +70,13 @@
          (raw (inf-haskell-get-multiline-results
 			   (org-babel-trim full-body)
 			   (get-buffer-process session))
-			  ;; (org-babel-comint-with-output
-			  ;; 	  (session org-babel-haskell-eoe t full-body)
-              ;;   (insert (org-babel-trim full-body))
-              ;;   (comint-send-input nil t)
-              ;;   (insert org-babel-haskell-eoe)
-              ;;   (comint-send-input nil t))
 			  )
+		 ;; (org-babel-comint-with-output
+		 ;; 	 (session org-babel-haskell-eoe t full-body)
+         ;;   (insert (org-babel-trim full-body))
+         ;;   (comint-send-input nil t)
+         ;;   (insert org-babel-haskell-eoe)
+         ;;   (comint-send-input nil t))
          (results ;; (org-babel-haskell-read-string)
 		  (org-babel-trim raw)))
     (org-babel-reassemble-table
@@ -156,8 +156,8 @@ specifying a variable of the same value."
 (defvar org-src-preserve-indentation)
 (defvar org-export-copy-to-kill-ring)
 (declare-function org-export-to-file "ox"
-		  (backend file
-			   &optional async subtreep visible-only body-only ext-plist))
+				  (backend file
+						   &optional async subtreep visible-only body-only ext-plist))
 (defun org-babel-haskell-export-to-lhs (&optional arg)
   "Export to a .lhs file with all haskell code blocks escaped.
 When called with a prefix argument the resulting

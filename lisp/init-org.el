@@ -185,6 +185,7 @@
      (eshell . t)
      (shell . t)
      (lisp . t)
+	 (racket . t)
      ;; (vterm-ob . t)
      ;; (gdb . t)
      (calc . t)))
@@ -235,6 +236,8 @@
 		(goto-char (point-min))
 		(re-search-forward "\r?\n\r?\n")
 		(buffer-substring-no-properties (point) (point-max))))))
+
+(autoload 'org-babel-execute:racket "ob-racket")
 
 (with-eval-after-load 'org-faces
   (setq org-cycle-level-faces nil))
@@ -684,8 +687,16 @@ It will operate between the region from START to END."
   :config
   (setq denote-directory (file-truename "~/sources/org/denote/"))
   :init
+  ;; using r prefix, because of org roam legacy...
   (global-set-key (kbd "C-c r i") 'denote-link-insert-link)
-  (global-set-key (kbd "C-c r c") 'denote-open-or-create))
+  (global-set-key (kbd "C-c r c") 'denote-open-or-create)
+  (global-set-key (kbd "C-c r w")
+                  (lambda ()
+                    (interactive)
+                    (let ((denote-directory
+                           (file-truename
+                            "~/sources/org/denote-work/")))
+                      (call-interactively 'denote-open-or-create)))))
 
 
 (with-eval-after-load 'oc
@@ -736,6 +747,11 @@ It will operate between the region from START to END."
               (org-present-read-write)
 	      (tab-bar-mode +1)
 	      (display-line-numbers-mode +1))))
+
+(defun inc0n/homepage ()
+  (interactive)
+  (let ((file "~/sources/org/homepage.org"))
+    (find-file file)))
 
 (provide 'init-org)
 ;;; init-org.el ends here

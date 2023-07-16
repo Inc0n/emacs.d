@@ -5,6 +5,8 @@
 
 ;;; Code:
 
+;; https://github.com/ndmitchell/ghcid/tree/master/plugins/emacs
+
 (require-package 'haskell-mode)
 (require-package 'elm-mode)
 

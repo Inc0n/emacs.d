@@ -37,7 +37,8 @@
   (setq-local c-basic-offset 3)
 
   (eldoc-mode 1)
-
+  (when (boundp 'inferior-cling-minor-mode)
+	(inferior-cling-minor-mode))
   ;; make DEL take all previous whitespace with it
   (c-toggle-hungry-state 1)
 
@@ -301,7 +302,6 @@ This function can be re-used by other major modes after compilation."
 		  (">=" . ?≥)))
   (prettify-symbols-mode 1)
 
-  (setq-local fill-column 70)			; smaller fill column
   (flymake-mode 1)						; check for syntax
   (subword-mode 1)
   (puni-mode 1)							; generic paredit
@@ -317,10 +317,6 @@ This function can be re-used by other major modes after compilation."
 
 (with-eval-after-load 'elec-pair
   (add-to-list 'electric-pair-pairs '(?{ . ?})))
-
-(with-eval-after-load 'prog-mode
-  (define-key prog-mode-map [?\M-o] 'avy-goto-subword-1))
-
 
 (with-eval-after-load 'xref
   (setq xref-show-definitions-function #'xref-show-definitions-completing-read)
@@ -451,6 +447,16 @@ This function can be re-used by other major modes after compilation."
 (require-package 'js-doc)
 (require-package 'js2-mode)
 (require-package 'rjsx-mode)
+
+
+;; this has hard dependencies on lsp
+(use-package tsx-mode
+  :disabled
+  :straight (tsx-mode.el
+             :host github
+             :repo "orzechowskid/tsx-mode.el"
+             :type git
+             :branch "emacs28"))
 
 ;; (use-package dap-mode :defer t)
 ;; (require 'dap-firefox)

@@ -79,19 +79,19 @@
   (require 'init-repeat)
   ;; ediff configuration should be last so it can override
   ;; the key bindings in previous configuration
-  (require 'init-ediff)
+  ;; (require 'init-ediff)
 
   ;; language
   (require 'init-org)
   (require 'init-text)
   (require 'init-prog-modes)
-  (require 'init-osx)
+  ;; (require 'init-osx)
   (require 'init-lisp)
-  (require 'init-haskell)
+  ;; (require 'init-haskell)
   ;;
   (require 'init-git)
   (require 'init-shell)
-  (require 'init-browse)
+  ;; (require 'init-browse)
 
   ;; @see https://github.com/hlissner/doom-emacs/wiki/FAQ
   ;; Adding directories under "site-lisp/" to `load-path' slows

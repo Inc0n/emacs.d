@@ -49,7 +49,7 @@ You still need modify `package-archives' in \"init-elpa.el\" to PERMANENTLY use 
 
 ;;; Bootstrap straight
 
-(when t
+(when nil
   (defvar bootstrap-version)
   (defvar straight-use-package-by-default nil)
   (let ((bootstrap-file

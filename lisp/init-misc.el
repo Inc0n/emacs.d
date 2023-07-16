@@ -413,13 +413,14 @@
                (emms-playlist-current-selected-track)
                'info-playing-time)
               0)
-		  (format
-		   emms-mode-line-format
-		   (emms-track-get
-			(emms-playlist-current-selected-track)
-			'info-title)
-		   ;; emms-playing-time-string
-		   )))
+		  (let ((track (emms-playlist-current-selected-track)))
+            (format
+		     emms-mode-line-format
+		     (or (emms-track-get track 'info-title)
+		         (file-name-base
+                  (emms-track-get track 'name)))
+		     ;; emms-playing-time-string
+		     ))))
   (util:define-keys emms-playlist-mode-map
 	"e" 'emms-tag-editor-edit
 	"g" 'emms-pause
@@ -1042,6 +1043,19 @@ FN is a list traversal operation."
 	:no-git? t)
   (defun skeletor-underscore-proj-name ()
 	(replace-regexp-in-string "-" "_" skeletor-project-name)))
+
+(use-package holymotion
+  ;; ERROR of holymotion-make-motion undefined function??
+  :disabled 
+  :straight (holymotion :type git
+                        :host github
+                        :repo "Overdr0ne/holymotion"
+                        :branch "main")
+  :config
+  ;; (holymotion-make-motion holymotion-forward-sexp #'puni-forward-sexp)
+  ;; (holymotion-make-motion holymotion-backward-sexp #'puni-backward-sexp)
+  nil
+  )
 
 (provide 'init-misc)
 ;;; init-misc.el ends here

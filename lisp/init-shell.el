@@ -60,7 +60,10 @@
 	  [?\M-q] 'quit-window
 	  [?\C-l] 'eshell/clear
 	  [?\C-c ?l] (lambda () (interactive)
-				   (eshell/clear :scrollback)
+				   ;; TODO, if buffer to big, ask and delete without
+				   ;; kill
+				   (let ((inhibit-read-only t))
+					 (erase-buffer))
 				   (eshell-send-input))
 	  [?\C-w] 'backward-delete-word))
 
@@ -117,13 +120,20 @@ Show COMMAND images within eshell buffer")
 							  (iimage-modification-hook))
 							image-fpath)
 	   (eshell-buffered-print image-fpath)
-	   (eshell-flush)))))
+	   (eshell-flush))))
+
+  (setq eshell-history-size 256)
+
+  (defalias 'eshell/v 'eshell-exec-visual))
+
+(use-package eat :ensure t
+  :after eshell
+  :config (add-hook 'emacs-load-hook 'eat-eshell-visual-command-mode))
 
 (use-package eshell-vterm :ensure t
+  :disabled
   :after eshell
-  :config
-  (eshell-vterm-mode)
-  (defalias 'eshell/v 'eshell-exec-visual))
+  :config (eshell-vterm-mode))
 
 (with-eval-after-load 'term
   ;; utf8

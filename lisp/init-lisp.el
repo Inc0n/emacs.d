@@ -2,35 +2,29 @@
 
 ;;; Code:
 
-(use-package janet-mode :ensure t :commands (janet-mode))
-(use-package inf-janet
+(use-package janet-mode :ensure t :defer t
+  :commands (janet-mode)
+  :config
+  (add-hook 'janet-mode-hook
+            (defun janet-mode-setup ()
+              (when (boundp 'ajsc-interaction-mode)
+                (ajsc-interaction-mode 1)))))
+
+(use-package inf-janet :disabled
   :defer t
   :straight (inf-janet :type git :host github
 					   :repo "velkyel/inf-janet"
-					   :files ("*.el"))
-  :config
-  (defun inf-janet-connect (host port)
-	"Connect to janet repl over net with HOST:PORT."
-	(interactive (list (read-string "Host: " "127.0.0.1")
-					   (read-number "Port: " 8001)))
-	(run-janet (cons host port))))
-
-(use-package shen-mode
-  :disabled
-  :commands (shen-mode run-shen)
-  :straight (shen-mode :type git :host github
-					   :repo "NHALX/shen-mode"
-					   :files ("*.el"))
-  :config (define-key shen-mode-map "" 'run-shen))
+					   :files ("*.el")))
 
 (use-package cider :ensure t :defer t
+  :disabled
   :config
   ;; @See for information on configuring profiles
   ;; https://github.com/clojure-emacs/cider/discussions/3025
   (add-to-list 'cider-jack-in-dependencies
 			   '("org.clojure/tools.deps.alpha" "0.14.1222"))
   (setq cider-jack-in-dependencies '())
-  (define-key cider-repl-mode-map
+  (util:define-keys cider-repl-mode-map
 	(kbd "C-c M-o") 'cider-repl-clear-buffer))
 
 ;; (use-package ob-clojure-literate :ensure t)
@@ -38,6 +32,14 @@
   :ensure t
   :hook ((clojure-mode . flymake-kondor-setup)
 		 (clojurescript-mode . flymake-kondor-setup)))
+
+(use-package clojure-mode :ensure t :defer t
+  :config
+  (add-hook 'clojure-mode-hook
+			(defun my/clojure-mode-setup ()
+			  ;; cider is force setting sesman system to 'CIDER
+			  ;; Shame on them. This causes an error on c-redisplay.
+			  (setq-local sesman-system nil))))
 
 (use-package inf-clojure :ensure t :defer t
   :config
@@ -63,11 +65,12 @@
   (setq inf-clojure-auto-mode nil)
   (with-eval-after-load 'clojure-mode
 	(define-key clojure-mode-map ""
-	  ;; 'inf-clojure
-	  (lambda () (interactive)
-		(let ((default-directory "~/.clojure/"))
-		  (call-interactively 'cider-jack-in-clj)
-		  )))))
+	  'inf-clojure
+	  ;; (lambda () (interactive)
+	  ;; 	(let ((default-directory "~/.clojure/"))
+	  ;; 	  (call-interactively 'cider-jack-in-clj)
+	  ;; 	  ))
+	  )))
 
 (require-package 'slime)
 
@@ -97,6 +100,11 @@
   ;; 09/08/22 racket has changed my view on [()] mixing
   (modify-syntax-entry ?\[ "(]" lisp-mode-syntax-table)
   (modify-syntax-entry ?\] ")[" lisp-mode-syntax-table))
+
+(with-eval-after-load 'scheme-mode
+  ;; Make [] part of scheme syntax table as well
+  (modify-syntax-entry ?\[ "(]" scheme-mode-syntax-table)
+  (modify-syntax-entry ?\] ")[" scheme-mode-syntax-table))
 
 (defun prog-comment-self-insert (char)
   "Insert the comment CHAR.
@@ -147,6 +155,8 @@ Call `newline-and-indent' if there are imbalanced sexp after point"
 ;; racket
 (require-package 'racket-mode)
 (with-eval-after-load 'racket-mode
+  ;; raco pkg install --auto data-lib errortrace-lib macro-debugger-text-lib rackunit-lib racket-index scribble-lib drracket-tool-text-lib
+  ;; If you do not want to use racket-xp-mode, then you can omit drracket-tool-text-lib. 
   ;; this would breaks pyim (chinese input)
   ;; (add-hook 'racket-mode-hook #'racket-unicode-input-method-enable)
   ;; (add-hook 'racket-repl-mode-hook #'racket-unicode-input-method-enable)
@@ -195,6 +205,7 @@ Call `newline-and-indent' if there are imbalanced sexp after point"
   (setq racket-show-functions '(racket-dante-show-result))
   ;; add-to-list doesn't work ...
   ;; (add-to-list 'racket-show-functions )
+  ;;; NOTE: racket show does not capture prints and display
   (defun racket-dante-show-result (str &optional pos)
 	"Dante style eval sexp within file."
 	(when (and str pos)					; save guard.
@@ -231,6 +242,8 @@ Call `newline-and-indent' if there are imbalanced sexp after point"
   ;; in-case not loaded properly, I will do it myself
   (add-hook 'slime-event-hooks 'slime-dispatch-media-event)
 
+  (add-hook 'sldb-mode-hook 'toggle-truncate-lines)
+
   (defun slime-c-p-c-completion-at-point ()
 	#'slime-complete-symbol*)
 
@@ -252,19 +265,27 @@ Call `newline-and-indent' if there are imbalanced sexp after point"
 
 ;;; gerbil
 
-;; gambit
-;; (require-package 'gambit)
-;; (autoload 'gambit-inferior-mode "gambit" "gambit package for gerbil")
-;; (add-hook 'inferior-scheme-mode-hook #'gambit-inferior-mode)
+(use-package gambit
+  :disabled
+  :load-path "/opt/homebrew/opt/gambit-scheme/current/share/emacs/site-lisp/"
+  :init
+  (autoload 'gambit-inferior-mode "gambit" "gambit package for gerbil")
+  ;; (add-hook 'inferior-scheme-mode-hook #'gambit-inferior-mode)
+  )
 
-;; gerbil setup
 (use-package gerbil-mode
   :disabled
   :load-path
-  (concat (shell-command-to-string "brew --prefix gerbil-scheme")
-		  "/share/emacs/site-lisp/")
+  ;; (concat (string-trim-right
+  ;;          (shell-command-to-string "brew --prefix gerbil-scheme"))
+  ;;   	  "/share/emacs/site-lisp/")
+  "/opt/homebrew/opt/gerbil-scheme/share/emacs/site-lisp/gerbil-scheme/"
   :config
   (setq-default gerbil-program-name (executable-find "gxi"))
+  (defun run-gerbil ()
+    (interactive)
+    (setq xscheme-prompt "> ")
+    (run-scheme "gxi"))
   :init
   ;; (defvar my/gerbil-home (getenv "GERBIL_HOME"))
   ;; (let ((gerbil-program-name (concat my/gerbil-home "/bin/gxi")))
@@ -278,13 +299,50 @@ Call `newline-and-indent' if there are imbalanced sexp after point"
   ;; (add-auto-mode 'gerbil-mode "\\.ss$")
   )
 
+(defun my/geiser-repl--set-this-buffer-repl (r)
+  "Make sure repl will persist.
+No need to start repl again for every scm file visited.  Argument
+R ."
+  (setq-default geiser-repl--repl r))
+
+(advice-add 'geiser-repl--set-this-buffer-repl :after
+            'my/geiser-repl--set-this-buffer-repl)
+
+;; https://gist.github.com/drewc/5f260537b7914a2b999c8a539fb48098
+(defun gerbil-scheme-start-swank (file encoding)
+  (format "%S\n\n"
+          `(begin (import (ecraven gerbil-swank))
+                  (start-swank ,file))))
+
+(setq slime-lisp-implementations
+      '((gerbil-scheme ("gxi" "-:d-" "--lang" "r7rs")
+                       :init gerbil-scheme-start-swank
+                       :env
+                       "GERBIL_LOADPATH=~/.gerbil/pkg/github.com/ecraven/r7rs-swank/")))
+
 (with-eval-after-load 'scheme
+  ;; (pop scheme-font-lock-keywords-2)
+  (add-to-list 'scheme-font-lock-keywords-2
+               '("\\<\\sw+:\\>" . font-lock-builtin-face))
+  (add-to-list 'scheme-font-lock-keywords-2
+               '("\\<#!\\sw+\\>" . font-lock-builtin-face))
+  (add-to-list 'scheme-font-lock-keywords-2
+               `(,(concat
+                   "(" (regexp-opt '("cons" "car" "cdr"
+                                     "null?" "pair?" "number?"
+                                     "error"
+                                     "#f" "#t")
+                                   t)
+                   "\\>")
+                 (1 font-lock-builtin-face)))
   (setq scheme-program-name "guile"))
 
 (with-eval-after-load 'geiser
-  ;; (geiser-implementation-extension 'guile "scm")
-  (setq-default geiser-implementations-alist
-				'(((regexp "\\.scm\\'") guile))))
+  (geiser-implementation-extension 'guile "scm")
+  ;; (geiser-implementation-extension 'chicken "scm")
+  ;; (setq-default geiser-implementations-alist
+  ;;   			'(((regexp "\\.scm\\'") chicken)))
+  )
 
 ;; gerbil tag table
 

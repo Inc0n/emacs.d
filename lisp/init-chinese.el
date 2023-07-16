@@ -15,10 +15,10 @@
          ;; "I.Ming"
          ;; "DFFangSongW3-A"
          ;; "AaFangSong (Non-Commercial Use)"
-         ;; "STFangSong"
+         "STFangSong"
 		 ;; "KaiTi SC"
          ;; "Hiragino Sans GB"
-		 "Songti SC"
+		 ;; "Songti SC"
 		 ))
     (dolist (charset '(kana han ;; symbol, keep lambda pure
 							cjk-misc

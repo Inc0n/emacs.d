@@ -30,7 +30,7 @@
        ',map-name)))
 
 ;; undo is already in this repeat map
-(define-key undo-repeat-map "r" 'undo-redo)
+(when nil (define-key undo-repeat-map "r" 'undo-redo))
 
 (define-repeat-mode-map winner
   "u" 'winner-undo
@@ -42,10 +42,10 @@
 ;;   "h" 'flycheck-display-error-at-point
 ;;   "e" 'flycheck-explain-error-at-point)
 
-(define-repeat-mode-map flymake
+(when nil (define-repeat-mode-map flymake
   "n" 'flymake-goto-next-error
   "p" 'flymake-goto-prev-error
-  "h" 'flymake-display-warning)
+  "h" 'flymake-display-warning))
 
 ;; (define-repeat-mode-map flyspell
 ;;   "n" 'flyspell-goto-next-error
