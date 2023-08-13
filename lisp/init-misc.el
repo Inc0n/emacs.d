@@ -36,6 +36,9 @@
 
   (mouse-wheel-mode 1)
   ;; (global-hl-line-mode +1)				; highlight current line
+
+  (when emacs-29? (setq delete-selection-temporary-region t))
+
   (delete-selection-mode 1)
   (savehist-mode 1)
 

@@ -226,15 +226,17 @@ Also converts full stops to commas."
     (forward-line 1)
     (indent-according-to-mode)))
 
-(defun copy-and-paste (beg end)
-  "Copy region BEG to END and paste it right below."
-  (interactive (region-or-line-beg-end-points))
-  (goto-char end)
-  (let ((str (buffer-substring beg end)))
-    (unless (s-suffix? "\n" str)
-      (insert ?\n))
-    (insert str))
-  (indent-according-to-mode))
+(if emacs-29?
+    (setf duplicate-line-final-position 1)
+  (defun duplicate-dwim (beg end)
+    "Copy region BEG to END and paste it right below."
+    (interactive (region-or-line-beg-end-points))
+    (goto-char end)
+    (let ((str (buffer-substring beg end)))
+      (unless (s-suffix? "\n" str)
+        (insert ?\n))
+      (insert str))
+    (indent-according-to-mode)))
 
 (defun backward-delete-word (start end)
   "Delete word or region from START to END.

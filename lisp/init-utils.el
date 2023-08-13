@@ -106,28 +106,29 @@ If region is active get region string and deactivate."
         (kill-this-buffer))
     (message "No file is currently being edited")))
 
-;; from http://emacsredux.com/blog/2013/05/04/rename-file-and-buffer/
-(defun rename-this-buffer-and-file ()
-  "Renames both current buffer and file it's visiting to NEW-NAME."
-  (interactive)
-  (let* ((filename (buffer-file-name))
-         (new-name (read-file-name "New name: " filename)))
-    (if (and (file-exists-p filename)
-             (vc-backend filename))
-        (vc-rename-file filename new-name)
-      (rename-file filename new-name 1) ;; will ask for confirmation
-      (message "rename dir: %s" (file-directory-p new-name))
-	  (if (file-directory-p new-name)
-          (progn
-            ;; append the original name with new directory
-            (setq new-name (expand-file-name filename new-name))
-            (setq default-directory (expand-file-name filename
-                                                      default-directory))
-            ;; (cd (file-name-directory new-name))
-            ))
-      (rename-buffer (buffer-name) t)
-	  (set-visited-file-name new-name)
-	  (set-buffer-modified-p nil))))
+(unless emacs-29?
+  ;; from http://emacsredux.com/blog/2013/05/04/rename-file-and-buffer/
+  (defun rename-visited-file ()
+    "Renames both current buffer and file it's visiting to NEW-NAME."
+    (interactive)
+    (let* ((filename (buffer-file-name))
+           (new-name (read-file-name "New name: " filename)))
+      (if (and (file-exists-p filename)
+               (vc-backend filename))
+          (vc-rename-file filename new-name)
+        (rename-file filename new-name 1) ;; will ask for confirmation
+        (message "rename dir: %s" (file-directory-p new-name))
+	    (if (file-directory-p new-name)
+            (progn
+              ;; append the original name with new directory
+              (setq new-name (expand-file-name filename new-name))
+              (setq default-directory (expand-file-name filename
+                                                        default-directory))
+              ;; (cd (file-name-directory new-name))
+              ))
+        (rename-buffer (buffer-name) t)
+	    (set-visited-file-name new-name)
+	    (set-buffer-modified-p nil)))))
 
 (defun copy-this-buffer-and-file ()
   "Copy the current buffer and file it is visiting.

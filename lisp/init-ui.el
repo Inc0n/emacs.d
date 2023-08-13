@@ -174,8 +174,8 @@
   "Setup 'display-line-numbers-mode'.
 Will disable line numbers if is temp buffer, or if `major-mode'
 in `my/linum-inhibit-modes'."
-  (when (not (derived-mode-p 'prog-mode))
-	;; (memq major-mode my/linum-inhibit-modes)
+  (when (memq major-mode my/linum-inhibit-modes)
+    ;; (not (derived-mode-p 'prog-mode))
 	(setq-local display-line-numbers nil)))
 
 (add-hook 'display-line-numbers-mode-hook #'display-line-numbers-mode-hook-setup)
@@ -444,9 +444,8 @@ in `my/linum-inhibit-modes'."
   (dolist (i custom-enabled-themes)
     (disable-theme i))
   (load-theme theme t)
-  (my/faces-setup)
   ;; sometimes, switching to light theme, cause unwanted font switch
-  )
+  (my/faces-setup))
 
 (defun my/toggle-day/night ()
   "Toggle between day and night themes."
@@ -462,7 +461,6 @@ in `my/linum-inhibit-modes'."
   :defer 2
   :config
   (blink-cursor-mode -1)
-  (show-paren-mode 1)
   (tab-bar-mode 1)
   (column-number-mode 1)
 
@@ -471,17 +469,18 @@ in `my/linum-inhibit-modes'."
 	(local-require 'winum))
   (winum-mode 1)
 
-  (setq show-paren-delay 0.05)
+  (setq show-paren-delay 0.05
+        show-paren-context-when-offscreen 'overlay)
+  (show-paren-mode 1)
 
   ;; load day/night theme according to current time
   (cl-flet
-	  ((time-from-string
-        (hour-minute-str)
-        (time-to-seconds
-         (encode-time
-		  (parse-time-string
-           (format-time-string
-			(concat "%+4Y-%m-%d " hour-minute-str)))))))
+	  ((time-from-string (hour-minute-str)
+         (time-to-seconds
+          (encode-time
+		   (parse-time-string
+            (format-time-string
+			 (concat "%+4Y-%m-%d " hour-minute-str)))))))
     (let ((current-time (time-from-string "%H:%M")))
       (if (and
 		   ;; past day time

@@ -165,7 +165,8 @@
 				(eq (char-syntax char-after) ?w)))))))
 
 (with-eval-after-load 'compile
-  (setq compilation-scroll-output t)
+  (setq compilation-scroll-output t
+        compilation-auto-jump-to-first-error 'first-known)
 
   ;; ANSI-escape coloring in compilation-mode
   (add-hook 'compilation-filter-hook #'ansi-color-compilation-filter)
@@ -189,6 +190,9 @@ This function can be re-used by other major modes after compilation."
 	  ;;   (delete-window))
 	  ;; (winner-undo)
 	  (message "NO COMPILATION ERRORS!"))))
+
+(when t
+  (setq sh-indent-statement-after-and nil))
 
 ;; structural editing package
 (use-package puni :ensure t

@@ -80,7 +80,8 @@ You still need modify `package-archives' in \"init-elpa.el\" to PERMANENTLY use 
 
 ;;; Packages
 
-(require-package 'use-package)
+(unless emacs-29?
+  (require-package 'use-package))
 
 (require-package 'async)
 

@@ -21,6 +21,8 @@
 
 (defvar my/normal-gc-cons-threshold (* 24 1024 1024))
 
+(defvar emacs-29? (version<= "29.0" emacs-version))
+
 (add-hook 'emacs-startup-hook
           (lambda ()
 			(set-face-attribute 'default nil :height 135)
@@ -40,7 +42,8 @@
   "Get the expanded PATH under .emacs.d."
   (expand-file-name path user-emacs-directory))
 
-(defvar my/site-lisp-dir (my/emacs-d "site-lisp") "My site directory.")
+(defvar my/site-lisp-dir (my/emacs-d "site-lisp")
+  "My site directory.")
 
 ;; font setting after window-system is loaded
 ;; (when (x-list-fonts "Anonymous Pro-13")

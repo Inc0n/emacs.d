@@ -73,8 +73,8 @@
 
   (setq delete-pair-blink-delay 0.1)
 
-  (keyboard-translate ?9 ?\()
-  (keyboard-translate ?\( ?9)
+  ;; (keyboard-translate ?9 ?\()
+  ;; (keyboard-translate ?\( ?9)
 
   (util:define-keys global-map
 	[?\M-s ?c] #'emacs-surround-change-at-point
@@ -122,13 +122,14 @@
 
   "ct" #'copy-this-buffer-and-file
   "dt" #'delete-this-buffer-and-file
-  "rt" #'rename-this-buffer-and-file
+  "rt" #'rename-visited-file
 
-  "eb" #'eval-buffer
+  "eb" (my/remind [?\C-c ?\C-e] #'elisp-eval-region-or-buffer)
 
+  "hd" #'duplicate-dwim
   "hf" #'consult-find
-  "hs" #'consult-recent-file
-  "hr" #'copy-and-paste
+  "hr" #'recentf-open
+  "hs" #'ff-find-related-file           ; also find-sibling-file
 
   "ih" #'my/goto-git-gutter
   "ii" #'consult-imenu

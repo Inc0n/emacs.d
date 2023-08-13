@@ -16,26 +16,27 @@
         (menu-bar-lines . 1)			; (menu-bar-mode 1)
 		(horizontal-scroll-bar-mode . nil)
 		(vertical-bar-mode . nil)
+        ;; disabled as it cause yabai to not tile Emacs.app
+        ;; (undecorated . t)			; Emacs 29+: disable title bar
         (undecorated-round . t)			; Emacs 29+: disable title bar
 		))
-
-
-(setq use-file-dialog nil)
-(setq use-dialog-box nil)
-(setq inhibit-splash-screen t)
-(setq inhibit-startup-screen t)
-(setq inhibit-startup-echo-area-message t)
-
-;; @see https://www.reddit.com/r/emacs/comments/988paa/emacs_on_windows_seems_lagging/
-;; speed up font rendering for special characters
-(setq inhibit-compacting-font-caches t)
 
 ;; transparency setup
 ;; (set-frame-parameter (selected-frame) 'alpha '95)
 ;; (add-to-list 'default-frame-alist '(alpha . (85 . 50)))
 
+(setq use-file-dialog nil
+      use-dialog-box nil)
+(setq inhibit-startup-screen t
+      inhibit-startup-echo-area-message t
+      inhibit-splash-screen t
+      ;; @see
+      ;; https://www.reddit.com/r/emacs/comments/988paa/emacs_on_windows_seems_lagging/
+      ;; speed up font rendering for special characters
+      inhibit-compacting-font-caches t)
+
 (setq initial-scratch-message
-	  (let ((fortune-prog (executable-find "fortune")))
+	  (if-let ((fortune-prog (executable-find "fortune")))
 		(if fortune-prog
 			k
 		  (format

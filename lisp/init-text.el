@@ -48,9 +48,9 @@
 (add-hook 'text-mode-hook 'my/text-mode-setup)
 (defun my/text-mode-setup ()
   (toggle-word-wrap 1)
-  ;; (when (and (version<= "29.0" emacs-version)
-  ;; 			 (fboundp 'pixel-scroll-precision-mode))
-  ;;   (pixel-scroll-precision-mode -1))
+  (when (and emacs-29?
+			 (fboundp 'pixel-scroll-precision-mode))
+    (pixel-scroll-precision-mode 1))
 
   ;; keep text mode: Emms tag edit mode Monospace
   (when (derived-mode-p 'org-mode)

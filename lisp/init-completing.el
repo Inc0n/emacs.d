@@ -316,8 +316,12 @@ Returns non-nil if an expansion was made and nil otherwise."
   (add-hook 'prog-mode-hook 'tempel-setup-capf)
   (add-hook 'text-mode-hook 'tempel-setup-capf))
 
-;; Emacs 29 built in completion rocks?
-(when (version<= "29" emacs-version)
+;; Emacs 29 built in completion setup, it still isn't on par with
+;; vertico yet
+(when nil
+  emacs-29?
+  (setq completion-auto-help 'always)
+
   (setq completions-format 'one-column
 		;; completions-header-format nil
 		completions-max-height 20
