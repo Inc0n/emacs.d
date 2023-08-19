@@ -32,7 +32,8 @@
   (ash x (- y)))
 
 (defun gua-change (gua yao)
-  (when-let ((i (--find-index (string= it gua) gua-64-names)))
+  (when-let ((i (--find-index (string= it gua)
+                              gua-64-names)))
     (nth (logxor i (>> 64 yao)) gua-64-names)))
 
 (defun gua-overlap (gua)

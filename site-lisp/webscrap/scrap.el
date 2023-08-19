@@ -5,7 +5,10 @@
 (require 'request) ; url request
 
 (defvar scrap-modules '()
-  "Modules (site) that are implemented for scrapping.")
+  "Modules (site) that are implemented for scrapping.
+A list of (url . handler) pair.  Module are matched using
+string-match, therefore, it is advised to using
+www.<domain>.<com> for better accuracy.")
 
 (defun scrap-request-html (url handler)
   (request
@@ -23,7 +26,9 @@
 (defun scrap-interface (url)
   (interactive "sUrl: ")
   (if-let ((handler (scrap-find-module url)))
-      (scrap-request-html url handler)
+      (progn
+        (message "handler: %s" handler)
+        (scrap-request-html url handler))
     (message "Url %s not supported" url)))
 
 ;; (defun scrap-zhonghuadiancang (url)
@@ -69,6 +74,8 @@ Optional argument DATA ."
          (dom-by-class data "rd-content")))
     (with-temp-file (concat title ".org")
       (insert "#+title: " title "\n")
+      ;; (insert "#+author: " "\n")
+      ;; (insert "#+tags: " "\n")
       (dolist (chapter chapters)
         (insert "* " (dom-text (dom-by-tag chapter 'h1)))
         (insert ?\n)
@@ -110,7 +117,6 @@ Optional argument DATA ."
                         (if (stringp elm)
                             elm
                           (dom-texts/sanitise elm))))))
-        
         (--> (s-join "\n" (mapcar gettext (dom-children content)))
              (format "\n* %s\n%s" chapter it)
              (with-temp-buffer
@@ -130,11 +136,14 @@ And write it to file named '<title>.org'."
   ;;   (lambda (&key data &allow-other-keys))))
   (message "html parsed ok")
   (let ((title
-         (dom-texts (dom-by-class (car (dom-by-tag data 'ol)) "active")))
+         (dom-texts (dom-by-class (car (dom-by-tag data 'ol))
+                                  "active")))
         (chapters
          (dom-by-tag (dom-by-id data "booklist") 'a)))
     (with-temp-file (concat title ".org")
-      (insert "#+title: " title "\n"))
+      (insert "#+title: " title "\n")
+      (insert "#+author: " "\n")
+      (insert "#+tags: " "\n"))
     (dolist (chapter chapters)
       (scrap-zhonghuadiancang-chapter
        (dom-attr chapter 'href)
@@ -179,8 +188,8 @@ And write it to file named '<title>.org'."
       (message "written to %s" filename))))
 
 ;; (scrap-find-module "https://www.zhonghuadiancang.com/")
-(add-to-list 'scrap-modules '("zhonghuadiancang" . scrap-zhonghuadiancang))
-(add-to-list 'scrap-modules '("daode" . scrap-daode))
+(add-to-list 'scrap-modules '("www.zhonghuadiancang.com" . scrap-zhonghuadiancang))
+;; (add-to-list 'scrap-modules '("www.daode.in" . scrap-daode))
 
 
 ;; (defvar temp

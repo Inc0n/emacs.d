@@ -689,7 +689,11 @@ It will operate between the region from START to END."
   :init
   ;; using r prefix, because of org roam legacy...
   (global-set-key (kbd "C-c r i") 'denote-link-insert-link)
-  (global-set-key (kbd "C-c r c") 'denote-open-or-create)
+  (global-set-key (kbd "C-c r o") 'denote-open-or-create)
+  (global-set-key (kbd "C-c r c")
+                  (lambda ()
+                    ;; TODO open with pinyin completion for Chinese denote
+                    (call-interactively 'denote-open-or-create)))
   (global-set-key (kbd "C-c r w")
                   (lambda ()
                     (interactive)
