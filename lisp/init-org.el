@@ -482,9 +482,10 @@
   :init
   (setq org-modern-statistics nil
 		org-modern-table nil
-		org-modern-keyword nil		 ; "‣"
+		org-modern-keyword nil          ; "‣"
 		org-modern-list '((43 . "•") (45 . "–") (42 . "◦"))
-        org-modern-star '("✸") ;; '("◉" "○" "◇" ?◈)
+        org-modern-replace-stars "✸"    ; "◉○◈◇✳"
+        org-modern-star 'replace
 		;; ⬘ ◉ ▣
 		org-modern-hide-stars "."))
 
