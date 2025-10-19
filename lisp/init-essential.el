@@ -116,8 +116,15 @@ widen content."
 	 [S-magnify-down] 'ignore
      [?\s-v] 'yank
      [?\s-s] 'save-buffer
-     [?\C-\s-f] 'toggle-frame-fullscreen)
+     [?\C-\s-f] 'toggle-frame-fullscreen
+     (kbd "M-3") (lambda () (interactive)
+                   (insert "#")))
 
+   (with-eval-after-load 'isearch
+     (define-key isearch-mode-map
+                 (kbd "M-3")
+                 (lambda () (interactive)
+                   (isearch-unread ?#))))
    (with-eval-after-load 'select
      ;; prevent mark (selection) save to kill-ring
      (setq select-enable-primary nil))))
