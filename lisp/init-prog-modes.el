@@ -347,18 +347,7 @@ This function can be re-used by other major modes after compilation."
   (setq-local comment-start "%"
 			  comment-add 0))
 
-(use-package odin-mode :disabled
-  :commands (odin-mode)
-  :straight (odin-mode :type git :host github
-					   :repo "mattt-b/odin-mode"
-					   :files ("*.el")))
-
 (use-package rust-mode :ensure t :defer t :mode "\\.rs\\'")
-
-(use-package dart-mode :defer t :ensure t)
-(use-package kotlin-mode :defer t :ensure t)
-(use-package groovy-mode :defer t :ensure t) ; gradle syntax highlighting
-(use-package qml-mode :ensure t :defer t)
 
 ;; (autoload 'gradle-mode "gradle-mode")
 
