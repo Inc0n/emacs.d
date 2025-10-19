@@ -7,6 +7,11 @@
   ;; (define-key magit-mode-map [C-tab] 'nil)
   )
 
+(use-package diff-hl :ensure t
+  :defer 2
+  :commands (global-diff-hl-mode)
+  :init (add-hook 'emacs-startup-hook 'global-diff-hl-mode))
+
 ;; {{
 (setq vc-handled-backends '(Git SVN Hg))
 ;; @see https://www.reddit.com/r/emacs/comments/4c0mi3/the_biggest_performance_improvement_to_emacs_ive/
