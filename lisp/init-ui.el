@@ -3,44 +3,6 @@
 ;;; Commentary:
 ;;; Code:
 
-;;; Minibuffer
-
-(use-package maple-minibuffer
-  :disabled
-  ;; unusable if `no-accept-focus' is non-nil, will prevent input
-  ;; acceptance. And `no-accept-focus' is needed for showing initial
-  ;; candidates
-  :straight (maple-minibuffer :type git :host github
-							  :repo "honmaple/emacs-maple-minibuffer"
-							  :files ("*.el"))
-  :config
-  (defun maple-minibuffer:parameters ()
-	"Maple minibuffer parameters."
-	`((height . ,(or maple-minibuffer:height 10))
-      (width . ,(or maple-minibuffer:width 1.0))
-	  ;; (no-accept-focus . t)
-      (left-fringe . 5)
-      (right-fringe . 5)))
-
-  (setq maple-minibuffer:position-type 'window-center
-		maple-minibuffer:border-color "black"
-		;; maple-minibuffer:height nil
-		maple-minibuffer:width 0.8
-		maple-minibuffer:cache t))
-
-(use-package mini-frame :ensure t
-  :config
-  (setq mini-frame-ignore-commands
-		'(eval-expression
-		  edebug-eval-expression
-		  debugger-eval-expression))
-  (setq mini-frame-show-parameters
-		'((top . 0.45)
-		  (width . 0.85)
-		  (vertical-scroll-bars . nil)
-		  (no-accept-focus . t)			; show initial candidates
-		  (left . 0.5))))
-
 ;;; tab-bar
 
 (with-eval-after-load 'tab-bar
