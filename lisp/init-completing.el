@@ -44,8 +44,10 @@ Similar to `marginalia-annotate-symbol', but does not show symbol class."
         :face 'marginalia-type)
        (marginalia--documentation (marginalia--function-doc sym)))))
 
-  (add-to-list 'marginalia-annotator-registry
-               '(command marginalia-annotate-command-maybe-mode))
+  (add-to-list 'marginalia-annotators
+               '(command marginalia-annotate-command-maybe-mode
+                         marginalia-annotate-binding builtin none))
+
   :init (add-hook 'minibuffer-mode-hook 'marginalia-mode))
 
 ;; Vertico seems to lag when dealing with a very long list
